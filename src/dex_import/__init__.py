@@ -1,5 +1,6 @@
 """Dex API integration package."""
 
+from .async_client import AsyncDexClient
 from .client import DexClient
 from .config import Settings
 from .exceptions import (
@@ -30,6 +31,7 @@ from .models import (
 
 __all__ = [
     # Client
+    "AsyncDexClient",
     "DexClient",
     "Settings",
     # Exceptions
