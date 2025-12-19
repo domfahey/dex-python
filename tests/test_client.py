@@ -2,7 +2,13 @@
 
 from pytest_httpx import HTTPXMock
 
-from src.dex_import import ContactCreate, DexClient, Settings
+from src.dex_import import (
+    ContactCreate,
+    DexClient,
+    NoteUpdate,
+    ReminderUpdate,
+    Settings,
+)
 
 
 class TestDexClient:
@@ -142,6 +148,46 @@ class TestDexClient:
             result = client.delete_contact("123")
 
         assert result["affected_rows"] == 1
+
+    def test_update_reminder_with_model(
+        self, settings: Settings, httpx_mock: HTTPXMock
+    ) -> None:
+        """Test updating a reminder using ReminderUpdate model."""
+        update = ReminderUpdate(
+            reminder_id="reminder-123",
+            changes={"text": "Updated text", "is_complete": True},
+        )
+        mock_response = {"update_reminders_by_pk": {"id": "reminder-123"}}
+        httpx_mock.add_response(
+            url="https://api.getdex.com/api/rest/reminders/reminder-123",
+            method="PUT",
+            json=mock_response,
+        )
+
+        with DexClient(settings) as client:
+            result = client.update_reminder(update)
+
+        assert result["update_reminders_by_pk"]["id"] == "reminder-123"
+
+    def test_update_note_with_model(
+        self, settings: Settings, httpx_mock: HTTPXMock
+    ) -> None:
+        """Test updating a note using NoteUpdate model."""
+        update = NoteUpdate(
+            note_id="note-456",
+            changes={"note": "Updated note text"},
+        )
+        mock_response = {"update_timeline_items_by_pk": {"id": "note-456"}}
+        httpx_mock.add_response(
+            url="https://api.getdex.com/api/rest/timeline_items/note-456",
+            method="PUT",
+            json=mock_response,
+        )
+
+        with DexClient(settings) as client:
+            result = client.update_note(update)
+
+        assert result["update_timeline_items_by_pk"]["id"] == "note-456"
 
     def test_context_manager(self, settings: Settings) -> None:
         """Test client works as context manager."""

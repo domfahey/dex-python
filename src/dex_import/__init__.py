@@ -10,8 +10,13 @@ from .models import (
     ContactUpdate,
     Note,
     NoteCreate,
+    NoteUpdate,
+    PaginatedContacts,
+    PaginatedNotes,
+    PaginatedReminders,
     Reminder,
     ReminderCreate,
+    ReminderUpdate,
 )
 
 __all__ = [
@@ -24,6 +29,11 @@ __all__ = [
     "ContactUpdate",
     "Note",
     "NoteCreate",
+    "NoteUpdate",
+    "PaginatedContacts",
+    "PaginatedNotes",
+    "PaginatedReminders",
     "Reminder",
     "ReminderCreate",
+    "ReminderUpdate",
 ]

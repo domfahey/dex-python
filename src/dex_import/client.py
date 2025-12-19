@@ -5,7 +5,14 @@ from typing import Any, Self
 import httpx
 
 from .config import Settings
-from .models import ContactCreate, ContactUpdate, NoteCreate, ReminderCreate
+from .models import (
+    ContactCreate,
+    ContactUpdate,
+    NoteCreate,
+    NoteUpdate,
+    ReminderCreate,
+    ReminderUpdate,
+)
 
 
 class DexClient:
@@ -106,14 +113,12 @@ class DexClient:
             json={"reminder": reminder.model_dump(exclude_none=True)},
         )
 
-    def update_reminder(
-        self, reminder_id: str, changes: dict[str, Any]
-    ) -> dict[str, Any]:
+    def update_reminder(self, update: ReminderUpdate) -> dict[str, Any]:
         """Update an existing reminder."""
         return self._request(
             "PUT",
-            f"/reminders/{reminder_id}",
-            json=changes,
+            f"/reminders/{update.reminder_id}",
+            json=update.model_dump(exclude_none=True),
         )
 
     def delete_reminder(self, reminder_id: str) -> dict[str, Any]:
@@ -148,12 +153,12 @@ class DexClient:
             json={"timeline_event": note.model_dump(exclude_none=True)},
         )
 
-    def update_note(self, note_id: str, changes: dict[str, Any]) -> dict[str, Any]:
+    def update_note(self, update: NoteUpdate) -> dict[str, Any]:
         """Update an existing note."""
         return self._request(
             "PUT",
-            f"/timeline_items/{note_id}",
-            json=changes,
+            f"/timeline_items/{update.note_id}",
+            json=update.model_dump(exclude_none=True),
         )
 
     def delete_note(self, note_id: str) -> dict[str, Any]:

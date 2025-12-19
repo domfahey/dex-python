@@ -195,6 +195,25 @@ class ReminderCreate(BaseModel):
         )
 
 
+class ReminderUpdate(BaseModel):
+    """Reminder update request body (PUT /reminders/{id})."""
+
+    model_config = ConfigDict(strict=True)
+
+    reminder_id: str
+    changes: dict[str, str | bool | None] = Field(default_factory=dict)
+    update_contacts: bool = False
+    reminders_contacts: list[dict[str, str]] = Field(default_factory=list)
+
+    @classmethod
+    def mark_complete(cls, reminder_id: str) -> "ReminderUpdate":
+        """Create update to mark reminder as complete."""
+        return cls(
+            reminder_id=reminder_id,
+            changes={"is_complete": True},
+        )
+
+
 # =============================================================================
 # Note (Timeline Item) Models
 # =============================================================================
@@ -236,3 +255,67 @@ class NoteCreate(BaseModel):
                 "data": [{"contact_id": cid} for cid in contact_ids]
             },
         )
+
+
+class NoteUpdate(BaseModel):
+    """Note update request body (PUT /timeline_items/{id})."""
+
+    model_config = ConfigDict(strict=True)
+
+    note_id: str
+    changes: dict[str, str | None] = Field(default_factory=dict)
+    update_contacts: bool = False
+    timeline_items_contacts: list[dict[str, str]] = Field(default_factory=list)
+
+
+# =============================================================================
+# Pagination Response Models
+# =============================================================================
+
+
+class PaginatedContacts(BaseModel):
+    """Paginated contacts response."""
+
+    model_config = ConfigDict(strict=True)
+
+    contacts: list[dict[str, str | None | list[dict[str, str]]]]
+    total: int
+    limit: int = 100
+    offset: int = 0
+
+    @property
+    def has_more(self) -> bool:
+        """Check if there are more results available."""
+        return self.offset + len(self.contacts) < self.total
+
+
+class PaginatedReminders(BaseModel):
+    """Paginated reminders response."""
+
+    model_config = ConfigDict(strict=True)
+
+    reminders: list[dict[str, str | bool | None | list[dict[str, str]]]]
+    total: int
+    limit: int = 100
+    offset: int = 0
+
+    @property
+    def has_more(self) -> bool:
+        """Check if there are more results available."""
+        return self.offset + len(self.reminders) < self.total
+
+
+class PaginatedNotes(BaseModel):
+    """Paginated notes response."""
+
+    model_config = ConfigDict(strict=True)
+
+    notes: list[dict[str, str | None | list[dict[str, str]]]]
+    total: int
+    limit: int = 100
+    offset: int = 0
+
+    @property
+    def has_more(self) -> bool:
+        """Check if there are more results available."""
+        return self.offset + len(self.notes) < self.total
