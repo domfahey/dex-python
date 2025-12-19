@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest:*)",
+      "Bash(tree:*)",
+      "Bash(source .env)",
+      "Bash(make test)",
+      "WebFetch(domain:getdex.com)",
+      "Bash(DEX_API_KEY=9844caa60887f65 uv run:*)",
+      "Bash(make test-unit:*)",
+      "Bash(make format:*)",
+      "Bash(make lint:*)",
+      "Bash(make type:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
