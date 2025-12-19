@@ -1,5 +1,6 @@
 """Dex API client."""
 
+import time
 from typing import Any, Self
 
 import httpx
@@ -23,13 +24,29 @@ from .models import (
     ReminderUpdate,
 )
 
+# Status codes that should be retried
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
 
 class DexClient:
     """Client for the Dex CRM API."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
-        """Initialize the client with settings."""
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        max_retries: int = 0,
+        retry_delay: float = 1.0,
+    ) -> None:
+        """Initialize the client with settings.
+
+        Args:
+            settings: API settings (loads from env if not provided)
+            max_retries: Max retry attempts for transient errors (0 = no retries)
+            retry_delay: Base delay between retries in seconds (exponential backoff)
+        """
         self.settings = settings if settings is not None else Settings()  # type: ignore[call-arg]
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         self._client = httpx.Client(
             base_url=self.settings.dex_base_url,
             headers={
@@ -81,9 +98,38 @@ class DexClient:
                 response_data=data,
             )
 
+    def _should_retry(self, status_code: int) -> bool:
+        """Check if request should be retried based on status code."""
+        return status_code in RETRYABLE_STATUS_CODES
+
+    def _request_with_retry(
+        self, method: str, endpoint: str, **kwargs: Any
+    ) -> httpx.Response:
+        """Make a request with retry logic for transient errors."""
+        last_response: httpx.Response | None = None
+
+        for attempt in range(self.max_retries + 1):
+            response = self._client.request(method, endpoint, **kwargs)
+            last_response = response
+
+            if response.status_code < 400:
+                return response
+
+            is_last_attempt = attempt == self.max_retries
+            if not self._should_retry(response.status_code) or is_last_attempt:
+                return response
+
+            # Exponential backoff
+            delay = self.retry_delay * (2**attempt)
+            time.sleep(delay)
+
+        # Should never reach here, but satisfy type checker
+        assert last_response is not None
+        return last_response
+
     def _request(self, method: str, endpoint: str, **kwargs: Any) -> dict[str, Any]:
         """Make an API request."""
-        response = self._client.request(method, endpoint, **kwargs)
+        response = self._request_with_retry(method, endpoint, **kwargs)
         if response.status_code >= 400:
             self._handle_error(response, endpoint)
         result: dict[str, Any] = response.json()
@@ -96,7 +142,7 @@ class DexClient:
     def get_contacts(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
         """Fetch paginated list of contacts."""
         endpoint = "/contacts"
-        response = self._client.request(
+        response = self._request_with_retry(
             "GET",
             endpoint,
             params={"limit": limit, "offset": offset},
