@@ -25,9 +25,11 @@ with DexClient() as client:
 # Client automatically closed
 ```
 
-### Methods
+---
 
-#### `get_contacts(limit=100, offset=0)`
+## Contacts API
+
+### `get_contacts(limit=100, offset=0)`
 
 Fetch paginated list of contacts.
 
@@ -35,7 +37,7 @@ Fetch paginated list of contacts.
 contacts = client.get_contacts(limit=10, offset=0)
 ```
 
-#### `get_contact(contact_id)`
+### `get_contact(contact_id)`
 
 Fetch a single contact by ID.
 
@@ -43,30 +45,210 @@ Fetch a single contact by ID.
 contact = client.get_contact("2a05d868-5a20-4c9c-8273-9a24bf589991")
 ```
 
-#### `create_contact(contact)`
+### `get_contact_by_email(email)`
+
+Fetch a contact by email address.
+
+```python
+contact = client.get_contact_by_email("john@example.com")
+```
+
+### `create_contact(contact)`
 
 Create a new contact.
 
 ```python
-from src.dex_import.client import Contact
+from src.dex_import import ContactCreate
 
-contact = Contact(first_name="John", last_name="Doe")
+contact = ContactCreate(first_name="John", last_name="Doe")
 result = client.create_contact(contact)
+
+# With email
+contact = ContactCreate.with_email(
+    email="john@example.com",
+    first_name="John",
+    last_name="Doe"
+)
+```
+
+### `update_contact(update)`
+
+Update an existing contact.
+
+```python
+from src.dex_import import ContactUpdate
+
+update = ContactUpdate(
+    contact_id="123-456",
+    changes={"first_name": "Johnny"}
+)
+result = client.update_contact(update)
+```
+
+### `delete_contact(contact_id)`
+
+Delete a contact by ID.
+
+```python
+result = client.delete_contact("123-456")
 ```
 
 ---
 
-## Contact Model
+## Reminders API
+
+### `get_reminders(limit=100, offset=0)`
+
+Fetch paginated list of reminders.
+
+```python
+reminders = client.get_reminders(limit=10)
+```
+
+### `create_reminder(reminder)`
+
+Create a new reminder.
+
+```python
+from src.dex_import import ReminderCreate
+
+reminder = ReminderCreate(text="Follow up with client")
+result = client.create_reminder(reminder)
+
+# With contacts
+reminder = ReminderCreate.with_contacts(
+    text="Follow up",
+    contact_ids=["c1", "c2"],
+    due_at_date="2025-01-20"
+)
+```
+
+### `update_reminder(update)`
+
+Update an existing reminder.
+
+```python
+from src.dex_import import ReminderUpdate
+
+update = ReminderUpdate(
+    reminder_id="123-456",
+    changes={"text": "Updated text", "is_complete": True}
+)
+result = client.update_reminder(update)
+
+# Mark complete using factory
+update = ReminderUpdate.mark_complete("123-456")
+result = client.update_reminder(update)
+```
+
+### `delete_reminder(reminder_id)`
+
+Delete a reminder by ID.
+
+```python
+result = client.delete_reminder("123-456")
+```
+
+---
+
+## Notes API
+
+### `get_notes(limit=100, offset=0)`
+
+Fetch paginated list of notes (timeline items).
+
+```python
+notes = client.get_notes(limit=10)
+```
+
+### `get_notes_by_contact(contact_id)`
+
+Fetch notes for a specific contact.
+
+```python
+notes = client.get_notes_by_contact("contact-123")
+```
+
+### `create_note(note)`
+
+Create a new note.
+
+```python
+from src.dex_import import NoteCreate
+
+note = NoteCreate(note="Meeting notes here")
+result = client.create_note(note)
+
+# With contacts
+note = NoteCreate.with_contacts(
+    note="Meeting notes",
+    contact_ids=["c1", "c2"],
+    event_time="2025-01-15T10:00:00.000Z"
+)
+```
+
+### `update_note(update)`
+
+Update an existing note.
+
+```python
+from src.dex_import import NoteUpdate
+
+update = NoteUpdate(
+    note_id="note-123",
+    changes={"note": "Updated note text"}
+)
+result = client.update_note(update)
+```
+
+### `delete_note(note_id)`
+
+Delete a note by ID.
+
+```python
+result = client.delete_note("note-123")
+```
+
+---
+
+## Models
+
+### ContactCreate
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | `str \| None` | Contact UUID (set by API) |
 | `first_name` | `str \| None` | First name |
 | `last_name` | `str \| None` | Last name |
-| `email` | `str \| None` | Email address |
-| `phone` | `str \| None` | Phone number |
-| `company` | `str \| None` | Company name |
-| `notes` | `str \| None` | Notes about contact |
+| `job_title` | `str \| None` | Job title |
+| `description` | `str \| None` | Description |
+| `linkedin` | `str \| None` | LinkedIn handle |
+| `twitter` | `str \| None` | Twitter handle |
+| `contact_emails` | `dict` | Nested email data |
+| `contact_phone_numbers` | `dict` | Nested phone data |
+
+### ReminderUpdate
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reminder_id` | `str` | Reminder ID (required) |
+| `changes` | `dict` | Fields to update |
+| `update_contacts` | `bool` | Whether to update contact associations |
+| `reminders_contacts` | `list` | Contact associations |
+
+### NoteUpdate
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `note_id` | `str` | Note ID (required) |
+| `changes` | `dict` | Fields to update |
+| `update_contacts` | `bool` | Whether to update contact associations |
+| `timeline_items_contacts` | `list` | Contact associations |
+
+### Pagination Models
+
+- `PaginatedContacts` - Paginated contacts with `has_more` property
+- `PaginatedReminders` - Paginated reminders with `has_more` property
+- `PaginatedNotes` - Paginated notes with `has_more` property
 
 ---
 
@@ -98,6 +280,7 @@ For complete Dex API documentation, see [dex_api_docs/](dex_api_docs/README.md).
 | PUT | `/reminders/{id}` | Update reminder |
 | DELETE | `/reminders/{id}` | Delete reminder |
 | GET | `/timeline_items` | List notes |
+| GET | `/timeline_items/contacts/{id}` | Notes by contact |
 | POST | `/timeline_items` | Create note |
 | PUT | `/timeline_items/{id}` | Update note |
 | DELETE | `/timeline_items/{id}` | Delete note |
