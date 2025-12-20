@@ -24,3 +24,13 @@ htmlcov/
 
 # UV
 uv.lock
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Dex data exports
+*.json
+!package.json
+*.csv

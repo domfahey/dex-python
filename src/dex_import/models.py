@@ -1,6 +1,7 @@
 """Pydantic models for Dex API matching the official schema."""
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -278,7 +279,7 @@ class PaginatedContacts(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    contacts: list[dict[str, str | None | list[dict[str, str]]]]
+    contacts: list[dict[str, Any]]
     total: int
     limit: int = 100
     offset: int = 0
@@ -294,7 +295,7 @@ class PaginatedReminders(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    reminders: list[dict[str, str | bool | None | list[dict[str, str]]]]
+    reminders: list[dict[str, Any]]
     total: int
     limit: int = 100
     offset: int = 0
@@ -310,7 +311,7 @@ class PaginatedNotes(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    notes: list[dict[str, str | None | list[dict[str, str]]]]
+    notes: list[dict[str, Any]]
     total: int
     limit: int = 100
     offset: int = 0
@@ -319,3 +320,69 @@ class PaginatedNotes(BaseModel):
     def has_more(self) -> bool:
         """Check if there are more results available."""
         return self.offset + len(self.notes) < self.total
+
+
+def extract_contacts_total(data: dict[str, Any]) -> int:
+    """Extract total count from contacts/notes pagination response."""
+    pagination = data.get("pagination", {})
+    if isinstance(pagination, dict):
+        total = pagination.get("total", {})
+        if isinstance(total, dict):
+            count = total.get("count", 0)
+            if isinstance(count, int):
+                return count
+    return 0
+
+
+def extract_reminders_total(data: dict[str, Any]) -> int:
+    """Extract total count from reminders response."""
+    total = data.get("total", {})
+    if isinstance(total, dict):
+        aggregate = total.get("aggregate", {})
+        if isinstance(aggregate, dict):
+            count = aggregate.get("count", 0)
+            if isinstance(count, int):
+                return count
+    return 0
+
+
+# =============================================================================
+# Response Entity Extractors
+# =============================================================================
+
+
+def extract_contact_entity(data: dict[str, Any]) -> dict[str, Any]:
+    """Extract contact entity from create/update/delete response."""
+    # Try different response wrapper keys
+    keys = ["insert_contacts_one", "update_contacts_by_pk", "delete_contacts_by_pk"]
+    for key in keys:
+        entity = data.get(key)
+        if isinstance(entity, dict):
+            return entity
+    return data  # Return as-is if no wrapper found
+
+
+def extract_reminder_entity(data: dict[str, Any]) -> dict[str, Any]:
+    """Extract reminder entity from create/update/delete response."""
+    for key in [
+        "insert_reminders_one",
+        "update_reminders_by_pk",
+        "delete_reminders_by_pk",
+    ]:
+        entity = data.get(key)
+        if isinstance(entity, dict):
+            return entity
+    return data
+
+
+def extract_note_entity(data: dict[str, Any]) -> dict[str, Any]:
+    """Extract note entity from create/update/delete response."""
+    for key in [
+        "insert_timeline_items_one",
+        "update_timeline_items_by_pk",
+        "delete_timeline_items_by_pk",
+    ]:
+        entity = data.get(key)
+        if isinstance(entity, dict):
+            return entity
+    return data

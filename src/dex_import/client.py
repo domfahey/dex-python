@@ -20,8 +20,16 @@ from .models import (
     ContactUpdate,
     NoteCreate,
     NoteUpdate,
+    PaginatedContacts,
+    PaginatedNotes,
+    PaginatedReminders,
     ReminderCreate,
     ReminderUpdate,
+    extract_contact_entity,
+    extract_contacts_total,
+    extract_note_entity,
+    extract_reminder_entity,
+    extract_reminders_total,
 )
 
 # Status codes that should be retried
@@ -153,6 +161,26 @@ class DexClient:
         result: list[dict[str, Any]] = data.get("contacts", [])
         return result
 
+    def get_contacts_paginated(
+        self, limit: int = 100, offset: int = 0
+    ) -> PaginatedContacts:
+        """Fetch paginated contacts with metadata."""
+        endpoint = "/contacts"
+        response = self._request_with_retry(
+            "GET",
+            endpoint,
+            params={"limit": limit, "offset": offset},
+        )
+        if response.status_code >= 400:
+            self._handle_error(response, endpoint)
+        data: dict[str, Any] = response.json()
+        return PaginatedContacts(
+            contacts=data.get("contacts", []),
+            total=extract_contacts_total(data),
+            limit=limit,
+            offset=offset,
+        )
+
     def get_contact(self, contact_id: str) -> dict[str, Any]:
         """Fetch a single contact by ID."""
         data = self._request("GET", f"/contacts/{contact_id}")
@@ -173,23 +201,26 @@ class DexClient:
 
     def create_contact(self, contact: ContactCreate) -> dict[str, Any]:
         """Create a new contact."""
-        return self._request(
+        data = self._request(
             "POST",
             "/contacts",
             json={"contact": contact.model_dump(exclude_none=True)},
         )
+        return dict(extract_contact_entity(data))
 
     def update_contact(self, update: ContactUpdate) -> dict[str, Any]:
         """Update an existing contact."""
-        return self._request(
+        data = self._request(
             "PUT",
             f"/contacts/{update.contact_id}",
             json=update.model_dump(exclude_none=True, by_alias=True),
         )
+        return dict(extract_contact_entity(data))
 
     def delete_contact(self, contact_id: str) -> dict[str, Any]:
         """Delete a contact by ID."""
-        return self._request("DELETE", f"/contacts/{contact_id}")
+        data = self._request("DELETE", f"/contacts/{contact_id}")
+        return dict(extract_contact_entity(data))
 
     # =========================================================================
     # Reminders API
@@ -205,25 +236,48 @@ class DexClient:
         result: list[dict[str, Any]] = data.get("reminders", [])
         return result
 
+    def get_reminders_paginated(
+        self, limit: int = 100, offset: int = 0
+    ) -> PaginatedReminders:
+        """Fetch paginated reminders with metadata."""
+        endpoint = "/reminders"
+        response = self._request_with_retry(
+            "GET",
+            endpoint,
+            params={"limit": limit, "offset": offset},
+        )
+        if response.status_code >= 400:
+            self._handle_error(response, endpoint)
+        data: dict[str, Any] = response.json()
+        return PaginatedReminders(
+            reminders=data.get("reminders", []),
+            total=extract_reminders_total(data),
+            limit=limit,
+            offset=offset,
+        )
+
     def create_reminder(self, reminder: ReminderCreate) -> dict[str, Any]:
         """Create a new reminder."""
-        return self._request(
+        data = self._request(
             "POST",
             "/reminders",
             json={"reminder": reminder.model_dump(exclude_none=True)},
         )
+        return dict(extract_reminder_entity(data))
 
     def update_reminder(self, update: ReminderUpdate) -> dict[str, Any]:
         """Update an existing reminder."""
-        return self._request(
+        data = self._request(
             "PUT",
             f"/reminders/{update.reminder_id}",
             json=update.model_dump(exclude_none=True),
         )
+        return dict(extract_reminder_entity(data))
 
     def delete_reminder(self, reminder_id: str) -> dict[str, Any]:
         """Delete a reminder by ID."""
-        return self._request("DELETE", f"/reminders/{reminder_id}")
+        data = self._request("DELETE", f"/reminders/{reminder_id}")
+        return dict(extract_reminder_entity(data))
 
     # =========================================================================
     # Notes (Timeline Items) API
@@ -239,6 +293,26 @@ class DexClient:
         result: list[dict[str, Any]] = data.get("timeline_items", [])
         return result
 
+    def get_notes_paginated(
+        self, limit: int = 100, offset: int = 0
+    ) -> PaginatedNotes:
+        """Fetch paginated notes with metadata."""
+        endpoint = "/timeline_items"
+        response = self._request_with_retry(
+            "GET",
+            endpoint,
+            params={"limit": limit, "offset": offset},
+        )
+        if response.status_code >= 400:
+            self._handle_error(response, endpoint)
+        data: dict[str, Any] = response.json()
+        return PaginatedNotes(
+            notes=data.get("timeline_items", []),
+            total=extract_contacts_total(data),  # Notes use same format as contacts
+            limit=limit,
+            offset=offset,
+        )
+
     def get_notes_by_contact(self, contact_id: str) -> list[dict[str, Any]]:
         """Fetch notes for a specific contact."""
         data = self._request("GET", f"/timeline_items/contacts/{contact_id}")
@@ -247,23 +321,26 @@ class DexClient:
 
     def create_note(self, note: NoteCreate) -> dict[str, Any]:
         """Create a new note."""
-        return self._request(
+        data = self._request(
             "POST",
             "/timeline_items",
             json={"timeline_event": note.model_dump(exclude_none=True)},
         )
+        return dict(extract_note_entity(data))
 
     def update_note(self, update: NoteUpdate) -> dict[str, Any]:
         """Update an existing note."""
-        return self._request(
+        data = self._request(
             "PUT",
             f"/timeline_items/{update.note_id}",
             json=update.model_dump(exclude_none=True),
         )
+        return dict(extract_note_entity(data))
 
     def delete_note(self, note_id: str) -> dict[str, Any]:
         """Delete a note by ID."""
-        return self._request("DELETE", f"/timeline_items/{note_id}")
+        data = self._request("DELETE", f"/timeline_items/{note_id}")
+        return dict(extract_note_entity(data))
 
     # =========================================================================
     # Client Management
