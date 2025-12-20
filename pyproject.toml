@@ -39,6 +39,7 @@ markers = [
 
 [dependency-groups]
 dev = [
+    "faker>=39.0.0",
     "mypy>=1.19.1",
     "pytest-httpx>=0.36.0",
     "types-networkx>=3.6.1.20251220",
