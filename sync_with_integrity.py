@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import json
+import os
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
@@ -13,7 +14,8 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 from src.dex_import.async_client import AsyncDexClient
 from src.dex_import.models import PaginatedContacts
 
-DB_PATH = "dex_contacts.db"
+os.makedirs("output", exist_ok=True)
+DB_PATH = "output/dex_contacts.db"
 BATCH_Size = 100
 CONCURRENCY = 5  # Max concurrent requests
 

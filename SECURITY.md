@@ -10,23 +10,31 @@
 
 This project syncs contact data from Dex CRM. To protect privacy:
 
+- **All artifacts go to `output/`** directory (gitignored)
 - **Database files** (`*.db`, `*.sqlite`) are gitignored
 - **Data exports** (`*.json`, `*.csv`) are gitignored
 - **Reports with PII** (`*_REPORT.md`) are gitignored
 - Never commit files containing real names, emails, or phone numbers
 
-## Pre-commit Checks
+## Pre-commit Hooks (Enforced)
 
-Consider using `git-secrets` to prevent accidental commits:
+This repo uses pre-commit hooks for automated secret scanning:
 
 ```bash
-# Install git-secrets
-brew install git-secrets
+# Install pre-commit
+pip install pre-commit  # or: brew install pre-commit
 
-# Initialize in repo
-git secrets --install
-git secrets --register-aws
+# Install hooks (runs gitleaks on every commit)
+pre-commit install
+
+# Run manually on all files
+pre-commit run --all-files
 ```
+
+The `.pre-commit-config.yaml` includes:
+- **gitleaks** - Scans for secrets, API keys, credentials
+- **ruff** - Linting and formatting
+- **standard hooks** - Trailing whitespace, YAML validation
 
 ## If You Accidentally Commit Secrets
 

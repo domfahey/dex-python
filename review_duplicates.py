@@ -21,7 +21,7 @@ def setup_db(cursor: sqlite3.Cursor) -> None:
 
 
 def main() -> None:
-    db_path = "dex_contacts.db"
+    db_path = "output/dex_contacts.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 

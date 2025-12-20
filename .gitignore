@@ -25,7 +25,11 @@ htmlcov/
 # UV
 uv.lock
 
-# Database files
+# Output directory (contains DB, reports, exports)
+output/*
+!output/README.md
+
+# Database files (legacy, now in output/)
 *.db
 *.sqlite
 *.sqlite3
@@ -36,7 +40,6 @@ uv.lock
 *.csv
 
 # Reports containing personal/contact data
-DUPLICATE_REPORT.md
 *_REPORT.md
 contacts_*.md
 export_*.md

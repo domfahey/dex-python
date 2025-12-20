@@ -99,7 +99,8 @@ def insert_contact_data(cursor: sqlite3.Cursor, contact: dict[str, Any]) -> None
 
 def main() -> None:
     """Fetch all contacts and save to database."""
-    db_path = "dex_contacts.db"
+    os.makedirs("output", exist_ok=True)
+    db_path = "output/dex_contacts.db"
 
     # Warn about destructive operation
     if os.path.exists(db_path):

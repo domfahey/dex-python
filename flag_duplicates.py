@@ -13,7 +13,7 @@ from src.dex_import.deduplication import (
 )
 
 
-def main(db_path: str = "dex_contacts.db") -> None:
+def main(db_path: str = "output/dex_contacts.db") -> None:
     if not Path(db_path).exists():
         print(f"Error: Database {db_path} not found.")
         return

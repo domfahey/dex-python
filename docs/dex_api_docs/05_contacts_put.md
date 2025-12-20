@@ -21,28 +21,28 @@ The ID of the contact to be updated
   "update_contact_phone_numbers": true,
   "contact_phone_numbers": [
     {
-      "contact_id": "8df02237-532e-4307-a611-1ddab4307690",
-      "phone_number": "9660077249",
+      "contact_id": "contact-123",
+      "phone_number": "555-0100",
       "label": "Work"  
     }
   ],
   "update_contact_emails": true,
   "contact_emails": [
     {
-      "contact_id": "8df02237-532e-4307-a611-1ddab4307690",
+      "contact_id": "contact-123",
       "email": "user@example.com"
     }
   ],
-  "contactId": "8df02237-532e-4307-a611-1ddab4307690",
+  "contactId": "contact-123",
   "changes": {
-      "first_name": "Kavya",
-      "last_name": "Shankar",
+      "first_name": "Example",
+      "last_name": "Contact",
       "job_title": null,
       "description": null,
       "education": null,
-      "image_url": "https://storage.googleapis.com/dex-staging.appspot.com/contacts/prh1HWo44ibdMHUGZ3Xsa7XpnEZ2/9915d5ff-3f57-469a-892d-6ff01279bf85/avatar.jpeg",
+      "image_url": "https://example.com/avatar-1.jpg",
       "linkedin": null,
-      "facebook": "kavyashankar",
+      "facebook": "example_user",
       "twitter": null,
       "instagram": null,
       "telegram": null,

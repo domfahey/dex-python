@@ -5,12 +5,15 @@ This script deduplicates and deletes notes based on content.
 ## Script
 
 ```python
-import os, requests
+import os
+import requests
 from collections import defaultdict
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────
-BASE_URL = "https://api.getdex.com/api/rest"
-API_KEY  = "YOUR_API_KEY" # Add your API Key
+BASE_URL = os.getenv("DEX_BASE_URL", "https://api.getdex.com/api/rest")
+API_KEY  = os.getenv("DEX_API_KEY")  # Load from environment
+if not API_KEY:
+    raise ValueError("DEX_API_KEY environment variable required")
 HEADERS  = {
     "Content-Type": "application/json",
     "x-hasura-dex-api-key": API_KEY,

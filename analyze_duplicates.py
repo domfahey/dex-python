@@ -107,4 +107,4 @@ def generate_report(db_path: str, output_path: str) -> None:
 
 
 if __name__ == "__main__":
-    generate_report("dex_contacts.db", "DUPLICATE_REPORT.md")
+    generate_report("output/dex_contacts.db", "output/DUPLICATE_REPORT.md")

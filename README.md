@@ -59,7 +59,7 @@ except RateLimitError as exc:
 
 ## SQLite sync
 
-Two scripts write contact data to `dex_contacts.db`:
+Scripts write contact data to `output/dex_contacts.db`:
 
 - `main.py` performs a full refresh and recreates tables on each run.
 - `sync_with_integrity.py` performs incremental syncs with hashes and preserves
@@ -78,7 +78,7 @@ uv run python sync_with_integrity.py
 4. Review interactively: `uv run python review_duplicates.py`
 5. Merge confirmed groups: `uv run python resolve_duplicates.py` (destructive)
 
-Back up `dex_contacts.db` before merging.
+Back up `output/dex_contacts.db` before merging.
 
 ## Development
 
@@ -97,6 +97,7 @@ Integration tests are marked with `integration` and require `DEX_API_KEY`.
 
 ## Documentation
 
+- [Getting Started](docs/getting-started.md) - Install, configure, and make a first request
 - [API Reference](docs/api.md) - Python client usage
 - [Dex API Docs](docs/dex_api_docs/README.md) - Local REST API reference
 - [Deduplication Plan](DEDUPLICATION_PLAN.md) - Local database deduplication flow

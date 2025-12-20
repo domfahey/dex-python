@@ -26,17 +26,17 @@ Set an offset of records, util for pagination (Default:0)
 {
     "contacts": [
         {
-            "id": "8df02237-532e-4307-a611-1ddab4307690",
-            "first_name": "Kavya",
-            "last_name": "Shankar",
+            "id": "contact-123",
+            "first_name": "Example",
+            "last_name": "Contact",
             "job_title": null,
             "description": null,
             "emails": [],
             "phones": [],
             "education": null,
-            "image_url": "https://storage.googleapis.com/dex-staging.appspot.com/contacts/prh1HWo44ibdMHUGZ3Xsa7XpnEZ2/9915d5ff-3f57-469a-892d-6ff01279bf85/avatar.jpeg",
+            "image_url": "https://example.com/avatar-1.jpg",
             "linkedin": null,
-            "facebook": "kavyashankar",
+            "facebook": "example_user",
             "twitter": null,
             "instagram": null,
             "telegram": null,
@@ -45,17 +45,17 @@ Set an offset of records, util for pagination (Default:0)
             "next_reminder_at": null
         },
         {
-            "id": "0a95f830-e40d-428b-91d1-b891c0106c28",
-            "first_name": "Kay",
-            "last_name": "Ag-hee",
+            "id": "contact-456",
+            "first_name": "Sample",
+            "last_name": "Person",
             "job_title": null,
             "description": null,
             "emails": [],
             "phones": [],
             "education": null,
-            "image_url": "https://storage.googleapis.com/dex-staging.appspot.com/contacts/prh1HWo44ibdMHUGZ3Xsa7XpnEZ2/4ac5772f-f298-409b-b18b-ed35e1f9cd79/avatar.jpeg",
+            "image_url": "https://example.com/avatar-2.jpg",
             "linkedin": null,
-            "facebook": "phdawl",
+            "facebook": "sample_user",
             "twitter": null,
             "instagram": null,
             "telegram": null,
@@ -86,17 +86,17 @@ GET https://api.getdex.com/api/rest/contacts/{contactId}
 {
     "contacts": [
         {
-            "id": "8df02237-532e-4307-a611-1ddab4307690",
-            "first_name": "Kavya",
-            "last_name": "Shankar",
+            "id": "contact-123",
+            "first_name": "Example",
+            "last_name": "Contact",
             "job_title": null,
             "description": null,
             "emails": [],
             "phones": [],
             "education": null,
-            "image_url": "https://storage.googleapis.com/dex-staging.appspot.com/contacts/prh1HWo44ibdMHUGZ3Xsa7XpnEZ2/9915d5ff-3f57-469a-892d-6ff01279bf85/avatar.jpeg",
+            "image_url": "https://example.com/avatar-1.jpg",
             "linkedin": null,
-            "facebook": "kavyashankar",
+            "facebook": "example_user",
             "twitter": null,
             "instagram": null,
             "telegram": null,
@@ -113,7 +113,7 @@ GET https://api.getdex.com/api/rest/contacts/{contactId}
 Fetches a contact matching with the email provided.
 
 ```
-GET https://api.getdex.com/api/rest/search/contacts?email=mikesuper@example.co
+GET https://api.getdex.com/api/rest/search/contacts?email=user@example.com
 ```
 
 ### Path Parameters
@@ -128,9 +128,9 @@ Email address of the contact
 {
     "search_contacts_by_exact_email": [
         {
-            "id": "8df02237-532e-4307-a611-1ddab4307690",
-            "first_name": "Kavya",
-            "last_name": "Shankar",
+            "id": "contact-123",
+            "first_name": "Example",
+            "last_name": "Contact",
             "job_title": null,
             "description": null,
             "emails": [
@@ -140,13 +140,13 @@ Email address of the contact
             ],
             "phones": [
                 {
-                    "phone_number": "9660077249"
+                    "phone_number": "555-0100"
                 }
             ],
             "education": null,
-            "image_url": "https://storage.googleapis.com/dex-staging.appspot.com/contacts/prh1HWo44ibdMHUGZ3Xsa7XpnEZ2/9915d5ff-3f57-469a-892d-6ff01279bf85/avatar.jpeg",
+            "image_url": "https://example.com/avatar-1.jpg",
             "linkedin": null,
-            "facebook": "kavyashankar",
+            "facebook": "example_user",
             "twitter": null,
             "instagram": null,
             "telegram": null,
