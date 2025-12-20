@@ -15,6 +15,9 @@ client = DexClient()
 # Or with custom settings
 settings = Settings(dex_api_key="your-key")
 client = DexClient(settings)
+
+# Enable retries for transient errors
+client = DexClient(settings, max_retries=3, retry_delay=0.5)
 ```
 
 ### Context Manager
@@ -23,6 +26,38 @@ client = DexClient(settings)
 with DexClient() as client:
     contacts = client.get_contacts()
 # Client automatically closed
+```
+
+### Retries and Rate Limits
+
+Retries are off by default (`max_retries=0`, `retry_delay=1.0`). When
+`max_retries` is greater than 0, both `DexClient` and `AsyncDexClient`
+retry status codes 429, 500, 502, 503, and 504 using exponential backoff
+based on `retry_delay` (seconds). Retries apply to all requests, so keep retry
+counts low for non-idempotent writes.
+
+### Error Handling
+
+Common exceptions you may want to handle:
+
+- `AuthenticationError` (401)
+- `ValidationError` (400)
+- `RateLimitError` (429, includes `retry_after`)
+- `ContactNotFoundError`, `ReminderNotFoundError`, `NoteNotFoundError` (404)
+- `DexAPIError` (other non-2xx/3xx responses)
+
+```python
+import time
+
+from src.dex_import import DexClient, DexAPIError, RateLimitError
+
+try:
+    with DexClient(max_retries=2, retry_delay=0.5) as client:
+        client.get_contacts()
+except RateLimitError as exc:
+    time.sleep(exc.retry_after or 1)
+except DexAPIError as exc:
+    print(exc)
 ```
 
 ---

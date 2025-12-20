@@ -25,9 +25,7 @@ class TestAsyncRetryLogic:
             json={"contacts": [{"id": "1"}]},
         )
 
-        async with AsyncDexClient(
-            settings, max_retries=2, retry_delay=0.01
-        ) as client:
+        async with AsyncDexClient(settings, max_retries=2, retry_delay=0.01) as client:
             contacts = await client.get_contacts()
 
         assert len(contacts) == 1
@@ -46,9 +44,7 @@ class TestAsyncRetryLogic:
             json={"contacts": [{"id": "2"}]},
         )
 
-        async with AsyncDexClient(
-            settings, max_retries=2, retry_delay=0.01
-        ) as client:
+        async with AsyncDexClient(settings, max_retries=2, retry_delay=0.01) as client:
             contacts = await client.get_contacts()
 
         assert len(contacts) == 1

@@ -14,7 +14,7 @@ make format           # Auto-fix lint issues and format
 make type             # Run mypy strict type checking
 
 # Run single test
-uv run pytest tests/test_client.py::TestDexClient::test_get_contacts -v
+uv run pytest tests/unit/test_clients.py::test_get_contacts -v
 ```
 
 ## Architecture
@@ -23,8 +23,8 @@ Dex CRM API client using httpx and pydantic.
 
 - `src/dex_import/config.py` - Settings loaded from `.env` (requires `DEX_API_KEY`)
 - `src/dex_import/client.py` - `DexClient` class with context manager support
-- `tests/test_client.py` - Unit tests with pytest-httpx mocking
-- `tests/test_integration.py` - Integration tests against live API
+- `tests/unit/test_clients.py` - Unit tests with pytest-httpx mocking
+- `tests/integration/test_live_api.py` - Integration tests against live API
 
 ## API
 

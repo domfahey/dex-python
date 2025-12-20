@@ -293,9 +293,7 @@ class DexClient:
         result: list[dict[str, Any]] = data.get("timeline_items", [])
         return result
 
-    def get_notes_paginated(
-        self, limit: int = 100, offset: int = 0
-    ) -> PaginatedNotes:
+    def get_notes_paginated(self, limit: int = 100, offset: int = 0) -> PaginatedNotes:
         """Fetch paginated notes with metadata."""
         endpoint = "/timeline_items"
         response = self._request_with_retry(

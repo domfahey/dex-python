@@ -88,4 +88,3 @@ class TestValidationError:
         """Test validation error."""
         error = ValidationError("Invalid email format")
         assert isinstance(error, DexAPIError)
-
