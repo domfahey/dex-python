@@ -98,5 +98,12 @@ Integration tests are marked with `integration` and require `DEX_API_KEY`.
 ## Documentation
 
 - [API Reference](docs/api.md) - Python client usage
-- [Dex API Docs](docs/dex_api_docs/README.md) - Complete Dex REST API reference
+- [Dex API Docs](docs/dex_api_docs/README.md) - Local REST API reference
 - [Deduplication Plan](DEDUPLICATION_PLAN.md) - Local database deduplication flow
+
+### Official Dex API
+
+- [Authentication](https://getdex.com/docs/api-reference/authentication) - API key setup
+- [Contacts](https://getdex.com/docs/api-reference/contacts) - Contact endpoints
+- [Reminders](https://getdex.com/docs/api-reference/reminders) - Reminder endpoints
+- [Notes](https://getdex.com/docs/api-reference/notes) - Note endpoints

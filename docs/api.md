@@ -1,5 +1,11 @@
 # API Reference
 
+Python client for the [Dex CRM API](https://getdex.com/docs/api-reference/authentication).
+
+See official docs: [Contacts](https://getdex.com/docs/api-reference/contacts) |
+[Reminders](https://getdex.com/docs/api-reference/reminders) |
+[Notes](https://getdex.com/docs/api-reference/notes)
+
 ## DexClient
 
 Python client for the Dex CRM API.

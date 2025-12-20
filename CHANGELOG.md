@@ -48,10 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2025-01-19
 
+Initial release implementing the [Dex CRM API](https://getdex.com/docs/api-reference/authentication).
+
 ### Added
 
 #### Core Client (418288d)
-- `DexClient` synchronous client for Dex CRM API
+- `DexClient` synchronous client for [Dex CRM API](https://getdex.com/docs/api-reference/contacts)
 - Full CRUD operations for contacts, reminders, and notes (15 endpoints)
 - Context manager support
 - `Settings` configuration with pydantic-settings
