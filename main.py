@@ -103,7 +103,7 @@ def main() -> None:
 
     # Warn about destructive operation
     if os.path.exists(db_path):
-        print("WARNING: This will DROP all existing tables and lose any dedup metadata!")
+        print("WARNING: This will DROP all tables and lose dedup metadata!")
         print("For incremental sync, use: uv run python sync_with_integrity.py")
         if "--force" not in sys.argv:
             response = input("Continue with full sync? [y/N]: ")

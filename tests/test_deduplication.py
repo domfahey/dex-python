@@ -64,7 +64,8 @@ class TestFuzzyNameDuplicates:
         )
         # Insert a valid contact
         cursor.execute(
-            "INSERT INTO contacts (id, first_name, last_name) VALUES ('c3', 'Bob', 'Smith')"
+            "INSERT INTO contacts (id, first_name, last_name) "
+            "VALUES ('c3', 'Bob', 'Smith')"
         )
         db_connection.commit()
 
@@ -85,10 +86,12 @@ class TestFuzzyNameDuplicates:
         cursor = db_connection.cursor()
 
         cursor.execute(
-            "INSERT INTO contacts (id, first_name, last_name) VALUES ('c1', 'John', '   ')"
+            "INSERT INTO contacts (id, first_name, last_name) "
+            "VALUES ('c1', 'John', '   ')"
         )
         cursor.execute(
-            "INSERT INTO contacts (id, first_name, last_name) VALUES ('c2', 'Jane', '  ')"
+            "INSERT INTO contacts (id, first_name, last_name) "
+            "VALUES ('c2', 'Jane', '  ')"
         )
         db_connection.commit()
 
@@ -111,9 +114,7 @@ class TestEmailDuplicates:
         """Same email twice on one contact should not produce duplicate IDs."""
         cursor = db_connection.cursor()
 
-        cursor.execute(
-            "INSERT INTO contacts (id, first_name) VALUES ('c1', 'John')"
-        )
+        cursor.execute("INSERT INTO contacts (id, first_name) VALUES ('c1', 'John')")
         # Same email twice on c1
         cursor.execute(
             "INSERT INTO emails (contact_id, email) VALUES ('c1', 'john@example.com')"
@@ -122,9 +123,7 @@ class TestEmailDuplicates:
             "INSERT INTO emails (contact_id, email) VALUES ('c1', 'john@example.com')"
         )
         # Different contact with same email
-        cursor.execute(
-            "INSERT INTO contacts (id, first_name) VALUES ('c2', 'Jane')"
-        )
+        cursor.execute("INSERT INTO contacts (id, first_name) VALUES ('c2', 'Jane')")
         cursor.execute(
             "INSERT INTO emails (contact_id, email) VALUES ('c2', 'john@example.com')"
         )
@@ -147,18 +146,14 @@ class TestPhoneDuplicates:
         """Same phone twice on one contact should not produce duplicate IDs."""
         cursor = db_connection.cursor()
 
-        cursor.execute(
-            "INSERT INTO contacts (id, first_name) VALUES ('c1', 'John')"
-        )
+        cursor.execute("INSERT INTO contacts (id, first_name) VALUES ('c1', 'John')")
         cursor.execute(
             "INSERT INTO phones (contact_id, phone_number) VALUES ('c1', '555-1234')"
         )
         cursor.execute(
             "INSERT INTO phones (contact_id, phone_number) VALUES ('c1', '555-1234')"
         )
-        cursor.execute(
-            "INSERT INTO contacts (id, first_name) VALUES ('c2', 'Jane')"
-        )
+        cursor.execute("INSERT INTO contacts (id, first_name) VALUES ('c2', 'Jane')")
         cursor.execute(
             "INSERT INTO phones (contact_id, phone_number) VALUES ('c2', '555-1234')"
         )
