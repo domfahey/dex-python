@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import inspect
 import json
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, Literal
 
 import pytest
 from pytest_httpx import HTTPXMock
@@ -26,45 +23,15 @@ from src.dex_import.exceptions import (
     RateLimitError,
     ValidationError,
 )
-
-ClientKind = Literal["sync", "async"]
+from tests.helpers import (
+    ClientKind,
+    build_url,
+    client_context,
+    get_single_request,
+    maybe_await,
+)
 
 pytestmark = pytest.mark.asyncio
-
-
-@pytest.fixture(params=["sync", "async"])
-def client_kind(request: pytest.FixtureRequest) -> ClientKind:
-    return request.param
-
-
-@asynccontextmanager
-async def client_context(
-    client_kind: ClientKind, settings: Settings
-) -> AsyncIterator[DexClient | AsyncDexClient]:
-    if client_kind == "sync":
-        with DexClient(settings) as client:
-            yield client
-    else:
-        async with AsyncDexClient(settings) as client:
-            yield client
-
-
-async def maybe_await(value: object) -> object:
-    if inspect.isawaitable(value):
-        return await value
-    return value
-
-
-def build_url(settings: Settings, path: str, params: str | None = None) -> str:
-    if params:
-        return f"{settings.dex_base_url}{path}?{params}"
-    return f"{settings.dex_base_url}{path}"
-
-
-def get_single_request(httpx_mock: HTTPXMock) -> object:
-    requests = httpx_mock.get_requests()
-    assert len(requests) == 1
-    return requests[0]
 
 
 async def test_client_uses_correct_headers(

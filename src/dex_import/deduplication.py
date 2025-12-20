@@ -1,0 +1,240 @@
+"""Duplicate detection, clustering, and merging logic."""
+
+import sqlite3
+from typing import Any
+
+import jellyfish
+import networkx as nx
+
+
+def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Find groups of contacts sharing the same email address (case-insensitive)."""
+    cursor = conn.cursor()
+
+    query = """
+        SELECT lower(email) as norm_email, GROUP_CONCAT(DISTINCT contact_id) as ids
+        FROM emails
+        WHERE email IS NOT NULL AND email != ''
+        GROUP BY lower(email)
+        HAVING COUNT(DISTINCT contact_id) > 1
+    """
+
+    cursor.execute(query)
+    results = []
+    for row in cursor.fetchall():
+        email, ids_str = row
+        results.append(
+            {
+                "match_type": "email",
+                "match_value": email,
+                "contact_ids": ids_str.split(","),
+            }
+        )
+    return results
+
+
+def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Find groups of contacts sharing the same phone number."""
+    cursor = conn.cursor()
+
+    query = """
+        SELECT phone_number, GROUP_CONCAT(DISTINCT contact_id) as ids
+        FROM phones
+        WHERE phone_number IS NOT NULL AND phone_number != ''
+        GROUP BY phone_number
+        HAVING COUNT(DISTINCT contact_id) > 1
+    """
+
+    cursor.execute(query)
+    results = []
+    for row in cursor.fetchall():
+        phone, ids_str = row
+        results.append(
+            {
+                "match_type": "phone",
+                "match_value": phone,
+                "contact_ids": ids_str.split(","),
+            }
+        )
+    return results
+
+
+def find_name_and_title_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Find duplicates based on exact Full Name + Job Title match."""
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            lower(trim(first_name)) || ' ' || lower(trim(last_name)) as full_name,
+            lower(trim(job_title)) as title,
+            GROUP_CONCAT(id) as ids
+        FROM contacts
+        WHERE
+            first_name IS NOT NULL AND first_name != '' AND
+            last_name IS NOT NULL AND last_name != '' AND
+            job_title IS NOT NULL AND job_title != ''
+        GROUP BY lower(trim(first_name)), lower(trim(last_name)), lower(trim(job_title))
+        HAVING COUNT(DISTINCT id) > 1
+    """
+
+    cursor.execute(query)
+    results = []
+    for row in cursor.fetchall():
+        full_name, title, ids_str = row
+        results.append(
+            {
+                "match_type": "name_title",
+                "match_value": f"{full_name} | {title}",
+                "contact_ids": ids_str.split(","),
+            }
+        )
+    return results
+
+
+def find_fuzzy_name_duplicates(
+    conn: sqlite3.Connection, threshold: float = 0.9
+) -> list[dict[str, Any]]:
+    """Find duplicates using fuzzy name matching with blocking."""
+    cursor = conn.cursor()
+
+    query = """
+        SELECT id, first_name, last_name
+        FROM contacts
+        WHERE first_name IS NOT NULL AND last_name IS NOT NULL
+    """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+
+    blocks: dict[str, list[dict[str, str]]] = {}
+    for rid, first, last in rows:
+        first, last = first.strip(), last.strip()
+
+        # Skip empty names after stripping
+        if not first or not last:
+            continue
+
+        try:
+            key = jellyfish.metaphone(last) or last.lower()[:2]
+        except Exception:
+            key = last.lower()[:2]
+
+        if key not in blocks:
+            blocks[key] = []
+        blocks[key].append({"id": rid, "full_name": f"{first} {last}"})
+
+    results = []
+    for items in blocks.values():
+        if len(items) < 2:
+            continue
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                p1, p2 = items[i], items[j]
+                score = jellyfish.jaro_winkler_similarity(
+                    p1["full_name"], p2["full_name"]
+                )
+                if score >= threshold:
+                    results.append(
+                        {
+                            "match_type": "fuzzy_name",
+                            "match_value": (
+                                f"{p1['full_name']} <-> {p2['full_name']} ({score:.2f})"
+                            ),
+                            "contact_ids": [p1["id"], p2["id"]],
+                        }
+                    )
+    return results
+
+
+def cluster_duplicates(matches: list[dict[str, Any]]) -> list[list[str]]:
+    """Cluster multiple matches into groups using graph connected components."""
+    graph: nx.Graph[str] = nx.Graph()
+    for match in matches:
+        ids = match["contact_ids"]
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                graph.add_edge(ids[i], ids[j])
+    return [list(c) for c in nx.connected_components(graph)]
+
+
+def merge_cluster(
+    conn: sqlite3.Connection, contact_ids: list[str], primary_id: str | None = None
+) -> str:
+    """Merge multiple contacts into a single primary record."""
+    if not contact_ids:
+        raise ValueError("No contact IDs provided")
+
+    cursor = conn.cursor()
+    placeholders = ",".join(["?"] * len(contact_ids))
+    cursor.execute(f"SELECT * FROM contacts WHERE id IN ({placeholders})", contact_ids)
+    rows = cursor.fetchall()
+
+    if not rows:
+        raise ValueError("Contacts not found in database")
+
+    if primary_id:
+        # Find the row corresponding to primary_id
+        primary_row_list = [r for r in rows if r[0] == primary_id]
+        if not primary_row_list:
+            raise ValueError(f"Primary ID {primary_id} not found in contact cluster")
+        primary_row = primary_row_list[0]
+        # Remove primary from candidates to merge FROM
+        other_rows = [r for r in rows if r[0] != primary_id]
+        sorted_rows = [primary_row] + other_rows
+    else:
+        # Auto-select best primary
+        def score_row(row: tuple[Any, ...]) -> int:
+            return sum(1 for field in row if field is not None and field != "")
+
+        sorted_rows = sorted(rows, key=score_row, reverse=True)
+        primary_row = sorted_rows[0]
+        primary_id = primary_row[0]
+
+    current_primary = list(primary_row)
+    for other_row in sorted_rows[1:]:
+        for i in range(len(current_primary)):
+            if (current_primary[i] is None or current_primary[i] == "") and other_row[
+                i
+            ]:
+                current_primary[i] = other_row[i]
+
+    cursor.execute(
+        """
+        UPDATE contacts
+        SET first_name=?, last_name=?, job_title=?, linkedin=?, website=?, full_data=?
+        WHERE id=?
+        """,
+        (
+            current_primary[1],
+            current_primary[2],
+            current_primary[3],
+            current_primary[4],
+            current_primary[5],
+            current_primary[6],
+            primary_id,
+        ),
+    )
+
+    for table in ["emails", "phones"]:
+        cursor.execute(
+            f"UPDATE {table} SET contact_id = ? WHERE contact_id IN ({placeholders})",
+            [primary_id] + contact_ids,
+        )
+        if table == "emails":
+            cursor.execute("""
+                DELETE FROM emails WHERE id NOT IN (
+                    SELECT MIN(id) FROM emails GROUP BY contact_id, lower(email)
+                )
+            """)
+        else:
+            cursor.execute("""
+                DELETE FROM phones WHERE id NOT IN (
+                    SELECT MIN(id) FROM phones GROUP BY contact_id, phone_number
+                )
+            """)
+
+    cursor.execute(
+        f"DELETE FROM contacts WHERE id IN ({placeholders}) AND id != ?",
+        contact_ids + [primary_id],
+    )
+    conn.commit()
+    return primary_id

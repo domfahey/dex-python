@@ -1,0 +1,81 @@
+"""Script to flag duplicates in the database without merging."""
+
+import sqlite3
+import uuid
+from pathlib import Path
+
+from src.dex_import.deduplication import (
+    cluster_duplicates,
+    find_email_duplicates,
+    find_fuzzy_name_duplicates,
+    find_name_and_title_duplicates,
+    find_phone_duplicates,
+)
+
+
+def main(db_path: str = "dex_contacts.db") -> None:
+    if not Path(db_path).exists():
+        print(f"Error: Database {db_path} not found.")
+        return
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # 1. Ensure the column exists
+    print("Ensuring schema supports duplicate flagging...")
+    try:
+        cursor.execute("ALTER TABLE contacts ADD COLUMN duplicate_group_id TEXT")
+    except sqlite3.OperationalError:
+        print("  Column 'duplicate_group_id' already exists.")
+
+    # 2. Reset existing flags
+    cursor.execute("UPDATE contacts SET duplicate_group_id = NULL")
+    conn.commit()
+
+    print("Finding all potential duplicates...")
+
+    # Collect all signals
+    matches = []
+    matches.extend(find_email_duplicates(conn))
+    matches.extend(find_phone_duplicates(conn))
+    matches.extend(find_name_and_title_duplicates(conn))
+    # Consistent threshold with previous run
+    matches.extend(find_fuzzy_name_duplicates(conn, threshold=0.98))
+
+    print(f"Found {len(matches)} duplicate signals.")
+
+    # Cluster into entities
+    clusters = cluster_duplicates(matches)
+    print(f"Clustered into {len(clusters)} unique duplicate groups.")
+
+    if not clusters:
+        print("No duplicates to flag.")
+        conn.close()
+        return
+
+    print("Flagging records...")
+    count = 0
+    for cluster in clusters:
+        # Generate a short unique ID for the group
+        group_id = str(uuid.uuid4())[:8]
+
+        placeholders = ",".join(["?"] * len(cluster))
+        cursor.execute(
+            f"UPDATE contacts SET duplicate_group_id = ? WHERE id IN ({placeholders})",
+            [group_id] + cluster,
+        )
+        count += len(cluster)
+
+    conn.commit()
+    conn.close()
+
+    print(f"Success! Flagged {count} contacts across {len(clusters)} groups.")
+    print(
+        "You can now query duplicates using: "
+        "SELECT * FROM contacts WHERE duplicate_group_id IS NOT NULL "
+        "ORDER BY duplicate_group_id;"
+    )
+
+
+if __name__ == "__main__":
+    main()

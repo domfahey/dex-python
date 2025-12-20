@@ -1,10 +1,13 @@
 """Script to download all contacts from Dex API and save to SQLite.
 
-Detailed tables version.
+WARNING: This script performs a FULL SYNC which drops and recreates all tables.
+Use sync_with_integrity.py for incremental updates that preserve metadata.
 """
 
 import json
+import os
 import sqlite3
+import sys
 from typing import Any
 
 from src.dex_import import DexClient
@@ -97,6 +100,17 @@ def insert_contact_data(cursor: sqlite3.Cursor, contact: dict[str, Any]) -> None
 def main() -> None:
     """Fetch all contacts and save to database."""
     db_path = "dex_contacts.db"
+
+    # Warn about destructive operation
+    if os.path.exists(db_path):
+        print("WARNING: This will DROP all existing tables and lose any dedup metadata!")
+        print("For incremental sync, use: uv run python sync_with_integrity.py")
+        if "--force" not in sys.argv:
+            response = input("Continue with full sync? [y/N]: ")
+            if response.lower() != "y":
+                print("Aborted. Use sync_with_integrity.py for incremental sync.")
+                return
+
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
