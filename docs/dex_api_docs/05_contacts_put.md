@@ -30,7 +30,7 @@ The ID of the contact to be updated
   "contact_emails": [
     {
       "contact_id": "8df02237-532e-4307-a611-1ddab4307690",
-      "email": "sjai60@gmail.com"
+      "email": "user@example.com"
     }
   ],
   "contactId": "8df02237-532e-4307-a611-1ddab4307690",

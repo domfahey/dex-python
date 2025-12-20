@@ -60,6 +60,37 @@ except DexAPIError as exc:
     print(exc)
 ```
 
+### Pagination Helpers
+
+Use paginated methods to access total counts and `has_more`.
+
+```python
+page = client.get_contacts_paginated(limit=100, offset=0)
+all_contacts = list(page.contacts)
+
+while page.has_more:
+    page = client.get_contacts_paginated(
+        limit=page.limit,
+        offset=page.offset + len(page.contacts),
+    )
+    all_contacts.extend(page.contacts)
+```
+
+Async versions (`AsyncDexClient`) expose the same `*_paginated` methods.
+
+## AsyncDexClient
+
+Async client with the same API as `DexClient`.
+
+```python
+from src.dex_import import AsyncDexClient, Settings
+
+settings = Settings(dex_api_key="your-key")
+
+async with AsyncDexClient(settings, max_retries=2, retry_delay=0.5) as client:
+    contacts = await client.get_contacts(limit=100)
+```
+
 ---
 
 ## Contacts API
@@ -70,6 +101,15 @@ Fetch paginated list of contacts.
 
 ```python
 contacts = client.get_contacts(limit=10, offset=0)
+```
+
+### `get_contacts_paginated(limit=100, offset=0)`
+
+Fetch contacts with total count metadata.
+
+```python
+page = client.get_contacts_paginated(limit=100, offset=0)
+print(page.total, page.has_more)
 ```
 
 ### `get_contact(contact_id)`
@@ -140,6 +180,15 @@ Fetch paginated list of reminders.
 reminders = client.get_reminders(limit=10)
 ```
 
+### `get_reminders_paginated(limit=100, offset=0)`
+
+Fetch reminders with total count metadata.
+
+```python
+page = client.get_reminders_paginated(limit=100, offset=0)
+print(page.total, page.has_more)
+```
+
 ### `create_reminder(reminder)`
 
 Create a new reminder.
@@ -194,6 +243,15 @@ Fetch paginated list of notes (timeline items).
 
 ```python
 notes = client.get_notes(limit=10)
+```
+
+### `get_notes_paginated(limit=100, offset=0)`
+
+Fetch notes with total count metadata.
+
+```python
+page = client.get_notes_paginated(limit=100, offset=0)
+print(page.total, page.has_more)
 ```
 
 ### `get_notes_by_contact(contact_id)`
@@ -260,6 +318,17 @@ result = client.delete_note("note-123")
 | `twitter` | `str \| None` | Twitter handle |
 | `contact_emails` | `dict` | Nested email data |
 | `contact_phone_numbers` | `dict` | Nested phone data |
+
+### ContactUpdate
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `contact_id` | `str` | Contact ID (required) |
+| `changes` | `dict` | Fields to update |
+| `update_contact_emails` | `bool` | Whether to update email associations |
+| `update_contact_phone_numbers` | `bool` | Whether to update phone associations |
+| `contact_emails` | `list` | Contact email associations |
+| `contact_phone_numbers` | `list` | Contact phone associations |
 
 ### ReminderUpdate
 

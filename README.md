@@ -57,11 +57,34 @@ except RateLimitError as exc:
     time.sleep(exc.retry_after or 1)
 ```
 
+## SQLite sync
+
+Two scripts write contact data to `dex_contacts.db`:
+
+- `main.py` performs a full refresh and recreates tables on each run.
+- `sync_with_integrity.py` performs incremental syncs with hashes and preserves
+  deduplication metadata.
+
+```bash
+uv run python main.py
+uv run python sync_with_integrity.py
+```
+
+## Deduplication workflow
+
+1. Sync contacts to SQLite (`main.py` or `sync_with_integrity.py`).
+2. Generate a report: `uv run python analyze_duplicates.py`
+3. Flag candidate groups: `uv run python flag_duplicates.py`
+4. Review interactively: `uv run python review_duplicates.py`
+5. Merge confirmed groups: `uv run python resolve_duplicates.py` (destructive)
+
+Back up `dex_contacts.db` before merging.
+
 ## Development
 
 ```bash
 make install          # Set up environment
-make test             # Run all tests
+make test             # Run unit tests (integration excluded by default)
 make test-unit        # Run unit tests only
 make test-integration # Run integration tests (requires API key)
 make lint             # Check code style
@@ -69,7 +92,10 @@ make format           # Auto-fix formatting
 make type             # Run type checking
 ```
 
+Integration tests are marked with `integration` and require `DEX_API_KEY`.
+
 ## Documentation
 
 - [API Reference](docs/api.md) - Python client usage
 - [Dex API Docs](docs/dex_api_docs/README.md) - Complete Dex REST API reference
+- [Deduplication Plan](DEDUPLICATION_PLAN.md) - Local database deduplication flow

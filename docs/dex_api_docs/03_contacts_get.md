@@ -135,7 +135,7 @@ Email address of the contact
             "description": null,
             "emails": [
                 {
-                    "email": "sjai60@gmail.com"
+                    "email": "user@example.com"
                 }
             ],
             "phones": [

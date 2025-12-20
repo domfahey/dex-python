@@ -17,12 +17,26 @@ make type             # Run mypy strict type checking
 uv run pytest tests/unit/test_clients.py::test_get_contacts -v
 ```
 
+Integration tests are marked `integration` and skipped by default.
+
+## Data Workflow
+
+```bash
+uv run python main.py
+uv run python sync_with_integrity.py
+uv run python analyze_duplicates.py
+uv run python flag_duplicates.py
+uv run python review_duplicates.py
+uv run python resolve_duplicates.py
+```
+
 ## Architecture
 
 Dex CRM API client using httpx and pydantic.
 
 - `src/dex_import/config.py` - Settings loaded from `.env` (requires `DEX_API_KEY`)
 - `src/dex_import/client.py` - `DexClient` class with context manager support
+- `src/dex_import/deduplication.py` - Duplicate detection and merging utilities
 - `tests/unit/test_clients.py` - Unit tests with pytest-httpx mocking
 - `tests/integration/test_live_api.py` - Integration tests against live API
 

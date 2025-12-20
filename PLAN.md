@@ -1,5 +1,9 @@
 # Implementation Plan: Full Dex API SDK
 
+> Status: Completed. The client now includes update models, pagination wrappers,
+> custom exceptions, async support, and retry logic. This plan is kept for
+> historical context.
+
 ## Current State
 
 ### Implemented Endpoints (15/15)
@@ -13,21 +17,21 @@
 | `/contacts/{id}` | DELETE | ✅ | Basic implementation |
 | `/reminders` | GET | ✅ | Pagination supported |
 | `/reminders` | POST | ✅ | Uses ReminderCreate model |
-| `/reminders/{id}` | PUT | ⚠️ | Uses raw dict, needs model |
+| `/reminders/{id}` | PUT | ✅ | Uses ReminderUpdate model |
 | `/reminders/{id}` | DELETE | ✅ | Basic implementation |
 | `/timeline_items` | GET | ✅ | Pagination supported |
 | `/timeline_items/contacts/{id}` | GET | ✅ | Notes by contact |
 | `/timeline_items` | POST | ✅ | Uses NoteCreate model |
-| `/timeline_items/{id}` | PUT | ⚠️ | Uses raw dict, needs model |
+| `/timeline_items/{id}` | PUT | ✅ | Uses NoteUpdate model |
 | `/timeline_items/{id}` | DELETE | ✅ | Basic implementation |
 
-### Gaps to Address
-1. **Missing Update Models**: ReminderUpdate, NoteUpdate
-2. **No Pagination Wrappers**: Can't access total count
-3. **No Custom Exceptions**: Generic httpx errors only
-4. **No Async Support**: Sync client only
-5. **No Retry Logic**: Fails on transient errors
-6. **Limited Test Coverage**: Missing tests for update/delete
+### Previously Identified Gaps (Completed)
+1. **Update Models**: ReminderUpdate, NoteUpdate
+2. **Pagination Wrappers**: Total counts and `has_more` helpers
+3. **Custom Exceptions**: Typed errors for common response codes
+4. **Async Support**: AsyncDexClient with mirrored API
+5. **Retry Logic**: Configurable retries with exponential backoff
+6. **Test Coverage**: Unit tests for update/delete paths
 
 ---
 

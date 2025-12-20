@@ -34,3 +34,14 @@ uv.lock
 *.json
 !package.json
 *.csv
+
+# Reports containing personal/contact data
+DUPLICATE_REPORT.md
+*_REPORT.md
+contacts_*.md
+export_*.md
+
+# Backup and temp files
+*.bak
+*.swp
+*.tmp
