@@ -84,6 +84,7 @@ Back up `dex_contacts.db` before merging.
 
 ```bash
 make install          # Set up environment
+make doctor           # Verify environment and dependencies
 make test             # Run unit tests (integration excluded by default)
 make test-unit        # Run unit tests only
 make test-integration # Run integration tests (requires API key)

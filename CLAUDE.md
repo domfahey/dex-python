@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 make install          # Set up venv and install deps
+make doctor           # Verify environment and dependencies
 make test             # Run all tests
 make test-unit        # Run unit tests only
 make test-integration # Run integration tests (live API)
