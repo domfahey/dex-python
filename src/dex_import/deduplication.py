@@ -59,6 +59,43 @@ def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     return results
 
 
+def find_birthday_name_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Find duplicates with same name AND same birthday month-day.
+
+    Excludes placeholder date 2001-01-01. Matches on month-day only since
+    the year field often contains entry date rather than birth year.
+    """
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            lower(trim(first_name)) || ' ' || lower(trim(last_name)) as full_name,
+            substr(json_extract(full_data, '$.birthday'), 6) as month_day,
+            GROUP_CONCAT(DISTINCT id) as ids
+        FROM contacts
+        WHERE
+            json_extract(full_data, '$.birthday') IS NOT NULL
+            AND json_extract(full_data, '$.birthday') NOT LIKE '2001-01-01%'
+            AND first_name IS NOT NULL AND first_name != ''
+            AND last_name IS NOT NULL AND last_name != ''
+        GROUP BY lower(trim(first_name)), lower(trim(last_name)), month_day
+        HAVING COUNT(DISTINCT id) > 1
+    """
+
+    cursor.execute(query)
+    results = []
+    for row in cursor.fetchall():
+        full_name, month_day, ids_str = row
+        results.append(
+            {
+                "match_type": "birthday_name",
+                "match_value": f"{full_name} (birthday: {month_day})",
+                "contact_ids": ids_str.split(","),
+            }
+        )
+    return results
+
+
 def find_name_and_title_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """Find duplicates based on exact Full Name + Job Title match."""
     cursor = conn.cursor()

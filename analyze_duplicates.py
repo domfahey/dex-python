@@ -1,15 +1,21 @@
 """Script to analyze duplicates in the local database across all levels."""
 
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 from src.dex_import.deduplication import (
+    find_birthday_name_duplicates,
     find_email_duplicates,
     find_fuzzy_name_duplicates,
     find_name_and_title_duplicates,
     find_phone_duplicates,
 )
+
+DATA_DIR = Path(os.getenv("DEX_DATA_DIR", "output"))
+DEFAULT_DB_PATH = DATA_DIR / "dex_contacts.db"
+DEFAULT_REPORT_PATH = DATA_DIR / "DUPLICATE_REPORT.md"
 
 
 def get_contact_summary(conn: sqlite3.Connection, contact_id: str) -> dict[str, Any]:
@@ -48,11 +54,16 @@ def generate_report(db_path: str, output_path: str) -> None:
         print(f"Error: Database {db_path} not found.")
         return
 
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
     conn = sqlite3.connect(db_path)
 
     print("Running Level 1 Analysis (Exact Emails/Phones)...")
     email_dupes = find_email_duplicates(conn)
     phone_dupes = find_phone_duplicates(conn)
+
+    print("Running Level 1.5 Analysis (Name + Birthday)...")
+    birthday_dupes = find_birthday_name_duplicates(conn)
 
     print("Running Level 2 Analysis (Name + Title)...")
     name_title_dupes = find_name_and_title_duplicates(conn)
@@ -63,7 +74,8 @@ def generate_report(db_path: str, output_path: str) -> None:
 
     # Calculate total unique contacts involved
     all_dupe_ids = set()
-    for dupes in [email_dupes, phone_dupes, name_title_dupes, fuzzy_dupes]:
+    all_dupes = [email_dupes, phone_dupes, birthday_dupes, name_title_dupes, fuzzy_dupes]
+    for dupes in all_dupes:
         for group in dupes:
             all_dupe_ids.update(group["contact_ids"])
 
@@ -88,6 +100,13 @@ def generate_report(db_path: str, output_path: str) -> None:
         for group in phone_dupes:
             write_group_to_file(f, conn, group, "Phone")
 
+        f.write("## Level 1.5: Name + Birthday (High Confidence)\n")
+        f.write("### Same Name and Birthday\n")
+        if not birthday_dupes:
+            f.write("_No name + birthday duplicates found._\n")
+        for group in birthday_dupes:
+            write_group_to_file(f, conn, group, "Birthday")
+
         f.write("## Level 2: Rule-Based Matches (Medium Confidence)\n")
         f.write("### Shared Name + Job Title\n")
         if not name_title_dupes:
@@ -107,4 +126,4 @@ def generate_report(db_path: str, output_path: str) -> None:
 
 
 if __name__ == "__main__":
-    generate_report("output/dex_contacts.db", "output/DUPLICATE_REPORT.md")
+    generate_report(str(DEFAULT_DB_PATH), str(DEFAULT_REPORT_PATH))
