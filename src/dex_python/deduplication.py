@@ -1,10 +1,11 @@
 """Duplicate detection, clustering, and merging logic.
 
 This module provides a multi-level deduplication system for contact records:
-- Level 1: Exact email and phone matching
+- Level 1: Exact email and normalized phone matching
 - Level 1.5: Birthday + name matching
+- Level 1.5b: Fingerprint-based name matching (OpenRefine-style)
 - Level 2: Exact name + job title matching
-- Level 3: Fuzzy name matching using Jaro-Winkler similarity
+- Level 3: Fuzzy name matching using ensemble similarity
 
 The clustering function uses graph theory (connected components) to group
 related duplicates that may have been found through different match types.
@@ -14,7 +15,8 @@ Example:
     >>> conn = sqlite3.connect("contacts.db")
     >>> email_dups = find_email_duplicates(conn)
     >>> phone_dups = find_phone_duplicates(conn)
-    >>> clusters = cluster_duplicates(email_dups + phone_dups)
+    >>> fp_dups = find_fingerprint_name_duplicates(conn)
+    >>> clusters = cluster_duplicates(email_dups + phone_dups + fp_dups)
 """
 
 import sqlite3
@@ -22,6 +24,8 @@ from typing import Any
 
 import jellyfish
 import networkx as nx
+
+from .fingerprint import fingerprint, normalize_phone
 
 
 def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
@@ -63,6 +67,10 @@ def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """Find groups of contacts sharing the same phone number.
 
+    Uses phone normalization to match different formats:
+    - "(555) 123-4567" matches "555-123-4567"
+    - "+1 555-123-4567" matches "5551234567"
+
     Args:
         conn: SQLite database connection.
 
@@ -72,25 +80,40 @@ def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """
     cursor = conn.cursor()
 
+    # Fetch all phones with their contact IDs
     query = """
-        SELECT phone_number, GROUP_CONCAT(DISTINCT contact_id) as ids
+        SELECT contact_id, phone_number
         FROM phones
         WHERE phone_number IS NOT NULL AND phone_number != ''
-        GROUP BY phone_number
-        HAVING COUNT(DISTINCT contact_id) > 1
     """
-
     cursor.execute(query)
+    rows = cursor.fetchall()
+
+    # Group by normalized phone number
+    phone_groups: dict[str, set[str]] = {}
+    phone_originals: dict[str, str] = {}
+
+    for contact_id, phone_number in rows:
+        normalized = normalize_phone(phone_number)
+        if not normalized:
+            continue
+
+        if normalized not in phone_groups:
+            phone_groups[normalized] = set()
+            phone_originals[normalized] = phone_number
+        phone_groups[normalized].add(contact_id)
+
+    # Find groups with multiple contacts
     results = []
-    for row in cursor.fetchall():
-        phone, ids_str = row
-        results.append(
-            {
-                "match_type": "phone",
-                "match_value": phone,
-                "contact_ids": ids_str.split(","),
-            }
-        )
+    for normalized, contact_ids in phone_groups.items():
+        if len(contact_ids) > 1:
+            results.append(
+                {
+                    "match_type": "phone",
+                    "match_value": normalized,
+                    "contact_ids": list(contact_ids),
+                }
+            )
     return results
 
 
@@ -136,6 +159,63 @@ def find_birthday_name_duplicates(conn: sqlite3.Connection) -> list[dict[str, An
                 "contact_ids": ids_str.split(","),
             }
         )
+    return results
+
+
+def find_fingerprint_name_duplicates(
+    conn: sqlite3.Connection,
+) -> list[dict[str, Any]]:
+    """Find duplicates using OpenRefine-style fingerprinting.
+
+    Level 1.5b matching: uses fingerprint keying to match names that are:
+    - Reordered: "Tom Cruise" matches "Cruise, Tom"
+    - Unicode normalized: "José García" matches "Jose Garcia"
+    - Punctuation removed: "O'Brien" matches "OBrien"
+
+    Args:
+        conn: SQLite database connection.
+
+    Returns:
+        List of match dictionaries with 'match_type', 'match_value',
+        and 'contact_ids' keys.
+    """
+    cursor = conn.cursor()
+
+    query = """
+        SELECT id, first_name, last_name
+        FROM contacts
+        WHERE first_name IS NOT NULL AND first_name != ''
+          AND last_name IS NOT NULL AND last_name != ''
+    """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+
+    # Group by fingerprint
+    fp_groups: dict[str, list[tuple[str, str]]] = {}
+
+    for contact_id, first_name, last_name in rows:
+        full_name = f"{first_name} {last_name}"
+        fp = fingerprint(full_name)
+        if not fp:
+            continue
+
+        if fp not in fp_groups:
+            fp_groups[fp] = []
+        fp_groups[fp].append((contact_id, full_name))
+
+    # Find groups with multiple contacts
+    results = []
+    for fp, contacts in fp_groups.items():
+        if len(contacts) > 1:
+            contact_ids = [c[0] for c in contacts]
+            names = [c[1] for c in contacts]
+            results.append(
+                {
+                    "match_type": "fingerprint_name",
+                    "match_value": f"{fp} ({', '.join(names)})",
+                    "contact_ids": contact_ids,
+                }
+            )
     return results
 
 
