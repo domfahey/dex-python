@@ -1,57 +1,123 @@
-.PHONY: install test test-unit test-integration lint format type check sync sync-back-notes sync-back-desc sync-back-title sync-back-preview analyze flag-duplicates resolve-duplicates doctor clean
+# Dex Python SDK Makefile
+# https://github.com/domfahey/dex-python
 
-install:
+.DEFAULT_GOAL := help
+
+# =============================================================================
+# DEVELOPMENT
+# =============================================================================
+
+.PHONY: install
+install: ## Set up development environment
 	uv venv && uv sync --all-extras --dev
 
-test:
-	uv run pytest -v
+.PHONY: doctor
+doctor: ## Verify environment and dependencies
+	@echo "=== Environment Check ==="
+	@uv --version
+	@uv run python -c "import sys; print('python:', sys.version.split()[0])"
+	@uv run python -c "import importlib.util; req=['httpx','pydantic','pydantic_settings','jellyfish','networkx','rich']; missing=[r for r in req if importlib.util.find_spec(r) is None]; print('missing deps:', ', '.join(missing) if missing else 'none')"
+	@uv run python -c "import os; print('DEX_API_KEY:', 'set' if os.getenv('DEX_API_KEY') else 'missing')"
 
-test-unit:
-	uv run pytest tests/unit -v
+.PHONY: clean
+clean: ## Remove build artifacts and caches
+	rm -rf .pytest_cache .mypy_cache .ruff_cache __pycache__
+	rm -rf src/**/__pycache__ tests/__pycache__ scripts/__pycache__
+	rm -rf *.egg-info build/ dist/
 
-test-integration:
-	@export $$(cat .env | xargs) && uv run pytest tests/integration -m integration -v
+# =============================================================================
+# CODE QUALITY
+# =============================================================================
 
-lint:
-	uv run ruff check .
-
-format:
+.PHONY: format
+format: ## Auto-fix code formatting
 	uv run ruff check . --fix
 	uv run ruff format .
 
-type:
+.PHONY: lint
+lint: ## Check code style
+	uv run ruff check .
+
+.PHONY: type
+type: ## Run type checking
 	uv run mypy src/ --strict
 
-check: format lint type test
+.PHONY: check
+check: format lint type test ## Run all checks (format, lint, type, test)
 
-sync:
+# =============================================================================
+# TESTING
+# =============================================================================
+
+.PHONY: test
+test: ## Run all tests (excludes integration)
+	uv run pytest -v
+
+.PHONY: test-unit
+test-unit: ## Run unit tests only
+	uv run pytest tests/unit -v
+
+.PHONY: test-integration
+test-integration: ## Run integration tests (requires DEX_API_KEY)
+	@export $$(cat .env | xargs) && uv run pytest tests/integration -m integration -v
+
+.PHONY: test-cov
+test-cov: ## Run tests with coverage report
+	uv run pytest --cov=src/dex_python --cov-report=html --cov-report=term
+
+# =============================================================================
+# SYNC OPERATIONS
+# =============================================================================
+
+.PHONY: sync
+sync: ## Sync contacts from Dex API to local database
 	uv run python scripts/sync_with_integrity.py
 
-sync-back-preview:
-	@echo "Choose a mode to preview: make sync-back-preview MODE=notes|description|job_title"
+.PHONY: sync-back-preview
+sync-back-preview: ## Preview sync-back changes (MODE=notes|description|job_title)
+	@echo "Usage: make sync-back-preview MODE=notes"
 	uv run python scripts/sync_enrichment_back.py --mode $(MODE) --dry-run
 
-sync-back-notes:
+.PHONY: sync-back-notes
+sync-back-notes: ## Push enrichments as timeline notes
 	uv run python scripts/sync_enrichment_back.py --mode notes
 
-sync-back-desc:
+.PHONY: sync-back-desc
+sync-back-desc: ## Push enrichments to description field
 	uv run python scripts/sync_enrichment_back.py --mode description
 
-sync-back-title:
+.PHONY: sync-back-title
+sync-back-title: ## Push enrichments to job_title field
 	uv run python scripts/sync_enrichment_back.py --mode job_title
 
-analyze:
+# =============================================================================
+# DEDUPLICATION
+# =============================================================================
+
+.PHONY: analyze
+analyze: ## Generate duplicate analysis report
 	uv run python scripts/analyze_duplicates.py
 
-flag-duplicates:
+.PHONY: flag-duplicates
+flag-duplicates: ## Flag duplicate candidates in database
 	uv run python scripts/flag_duplicates.py
 
-resolve-duplicates:
+.PHONY: resolve-duplicates
+resolve-duplicates: ## Merge confirmed duplicates (destructive)
 	uv run python scripts/resolve_duplicates.py
 
-doctor:
-	@uv --version
-	@uv run python -c "import importlib.util, os, sys; req=['httpx','pydantic','pydantic_settings','jellyfish','networkx','rich']; missing=[r for r in req if importlib.util.find_spec(r) is None]; print('python:', sys.version.split()[0]); print('missing deps:', ', '.join(missing) if missing else 'none'); print('DEX_API_KEY:', 'set' if os.getenv('DEX_API_KEY') else 'missing'); print('DEX_BASE_URL:', os.getenv('DEX_BASE_URL', 'default')); sys.exit(1 if missing else 0)"
+# =============================================================================
+# HELP
+# =============================================================================
 
-clean:
-	rm -rf .pytest_cache .venv __pycache__ src/**/__pycache__ tests/__pycache__
+.PHONY: help
+help: ## Show this help message
+	@echo "Dex Python SDK - Available Commands"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Examples:"
+	@echo "  make install          # Set up development environment"
+	@echo "  make check            # Run all quality checks"
+	@echo "  make sync             # Sync contacts from Dex API"
+	@echo "  make analyze          # Analyze duplicates"
