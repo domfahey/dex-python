@@ -16,7 +16,12 @@ erDiagram
         string id PK "UUID"
         string first_name
         string last_name
+        string name_given
+        string name_surname
+        json name_parsed "Raw name payload"
         string job_title
+        string company
+        string role
         string linkedin
         string website
         json full_data "Raw API Response"

@@ -1,4 +1,18 @@
-"""Pydantic models for Dex API matching the official schema."""
+"""Pydantic models for Dex API matching the official schema.
+
+This module defines all data models used for Dex API requests and responses.
+Models use strict validation and match the official Dex API schema exactly.
+
+Model Categories:
+    - Contact models: ContactEmail, ContactPhone, Contact, ContactCreate, ContactUpdate
+    - Reminder models: Reminder, ReminderCreate, ReminderUpdate
+    - Note models: Note, NoteCreate, NoteUpdate
+    - Pagination: PaginatedContacts, PaginatedReminders, PaginatedNotes
+
+Example:
+    >>> from dex_python import Contact, ContactCreate
+    >>> new_contact = ContactCreate.with_email("user@example.com", first_name="John")
+"""
 
 from datetime import datetime
 from typing import Any
@@ -11,7 +25,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ContactEmail(BaseModel):
-    """Email associated with a contact."""
+    """Email address associated with a contact.
+
+    Attributes:
+        email: The email address.
+        contact_id: ID of the associated contact (set by API).
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -20,7 +39,13 @@ class ContactEmail(BaseModel):
 
 
 class ContactPhone(BaseModel):
-    """Phone number associated with a contact."""
+    """Phone number associated with a contact.
+
+    Attributes:
+        phone_number: The phone number string.
+        label: Type label (e.g., "Work", "Mobile", "Home").
+        contact_id: ID of the associated contact (set by API).
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -30,7 +55,32 @@ class ContactPhone(BaseModel):
 
 
 class Contact(BaseModel):
-    """Dex contact (GET response schema)."""
+    """Dex contact entity returned from GET requests.
+
+    Represents a full contact record as returned by the Dex API.
+    All fields except `id` are optional since contacts may have
+    partial data.
+
+    Attributes:
+        id: Unique contact identifier.
+        first_name: Contact's first name.
+        last_name: Contact's last name.
+        job_title: Professional title or role.
+        description: Free-form notes about the contact.
+        education: Educational background.
+        website: Personal or professional website URL.
+        image_url: URL to contact's profile image.
+        linkedin: LinkedIn profile URL or username.
+        facebook: Facebook profile URL or username.
+        twitter: Twitter/X handle.
+        instagram: Instagram handle.
+        telegram: Telegram username.
+        birthday_current_year: Birthday formatted for current year.
+        last_seen_at: ISO timestamp of last interaction.
+        next_reminder_at: ISO timestamp of next scheduled reminder.
+        emails: List of email objects with 'email' key.
+        phones: List of phone objects with 'phone_number' and 'label' keys.
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -61,7 +111,17 @@ class Contact(BaseModel):
 
 
 class ContactCreate(BaseModel):
-    """Contact creation request body (POST /contacts)."""
+    """Request body for creating a new contact (POST /contacts).
+
+    Use factory methods `with_email()` or `with_phone()` for common patterns.
+
+    Example:
+        >>> contact = ContactCreate.with_email(
+        ...     "john@example.com",
+        ...     first_name="John",
+        ...     last_name="Doe"
+        ... )
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -96,7 +156,17 @@ class ContactCreate(BaseModel):
         last_name: str | None = None,
         **kwargs: str | int | None,
     ) -> "ContactCreate":
-        """Create contact with email."""
+        """Create a contact with an email address.
+
+        Args:
+            email: Email address for the contact.
+            first_name: Contact's first name.
+            last_name: Contact's last name.
+            **kwargs: Additional contact fields.
+
+        Returns:
+            ContactCreate instance ready for API submission.
+        """
         return cls(
             first_name=first_name,
             last_name=last_name,
@@ -113,7 +183,18 @@ class ContactCreate(BaseModel):
         last_name: str | None = None,
         **kwargs: str | int | None,
     ) -> "ContactCreate":
-        """Create contact with phone number."""
+        """Create a contact with a phone number.
+
+        Args:
+            phone_number: Phone number string.
+            label: Phone type label (default: "Work").
+            first_name: Contact's first name.
+            last_name: Contact's last name.
+            **kwargs: Additional contact fields.
+
+        Returns:
+            ContactCreate instance ready for API submission.
+        """
         return cls(
             first_name=first_name,
             last_name=last_name,
@@ -125,7 +206,16 @@ class ContactCreate(BaseModel):
 
 
 class ContactUpdate(BaseModel):
-    """Contact update request body (PUT /contacts/{id})."""
+    """Request body for updating an existing contact (PUT /contacts/{id}).
+
+    Attributes:
+        contact_id: ID of the contact to update.
+        changes: Dictionary of field names to new values.
+        update_contact_emails: Set True to replace all emails.
+        contact_emails: New email list (only used if update_contact_emails=True).
+        update_contact_phone_numbers: Set True to replace all phones.
+        contact_phone_numbers: New phone list (only used if above is True).
+    """
 
     model_config = ConfigDict(strict=True, populate_by_name=True)
 
@@ -147,7 +237,12 @@ class ContactUpdate(BaseModel):
 
 
 class ReminderContact(BaseModel):
-    """Contact reference for a reminder."""
+    """Contact reference used when linking reminders to contacts.
+
+    Attributes:
+        contact_id: The contact's unique identifier.
+        email: Alternative lookup by email address.
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -156,7 +251,16 @@ class ReminderContact(BaseModel):
 
 
 class Reminder(BaseModel):
-    """Dex reminder (GET response schema)."""
+    """Dex reminder entity returned from GET requests.
+
+    Attributes:
+        id: Unique reminder identifier.
+        body: Reminder text content.
+        is_complete: Whether the reminder has been completed.
+        due_at_date: Due date in YYYY-MM-DD format.
+        due_at_time: Due time in HH:MM format.
+        contact_ids: List of associated contacts with 'contact_id' key.
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -169,7 +273,17 @@ class Reminder(BaseModel):
 
 
 class ReminderCreate(BaseModel):
-    """Reminder creation request body (POST /reminders)."""
+    """Request body for creating a reminder (POST /reminders).
+
+    Use `with_contacts()` factory for linking to specific contacts.
+
+    Example:
+        >>> reminder = ReminderCreate.with_contacts(
+        ...     text="Follow up on proposal",
+        ...     contact_ids=["abc123"],
+        ...     due_at_date="2025-01-15"
+        ... )
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -187,7 +301,17 @@ class ReminderCreate(BaseModel):
         due_at_date: str | None = None,
         title: str | None = None,
     ) -> "ReminderCreate":
-        """Create reminder with associated contacts."""
+        """Create a reminder linked to specific contacts.
+
+        Args:
+            text: Reminder text content.
+            contact_ids: List of contact IDs to associate.
+            due_at_date: Due date in YYYY-MM-DD format.
+            title: Optional reminder title.
+
+        Returns:
+            ReminderCreate instance ready for API submission.
+        """
         return cls(
             title=title,
             text=text,
@@ -197,7 +321,16 @@ class ReminderCreate(BaseModel):
 
 
 class ReminderUpdate(BaseModel):
-    """Reminder update request body (PUT /reminders/{id})."""
+    """Request body for updating a reminder (PUT /reminders/{id}).
+
+    Use `mark_complete()` factory for the common completion pattern.
+
+    Attributes:
+        reminder_id: ID of the reminder to update.
+        changes: Dictionary of field names to new values.
+        update_contacts: Set True to replace associated contacts.
+        reminders_contacts: New contact list (only used if update_contacts=True).
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -208,7 +341,14 @@ class ReminderUpdate(BaseModel):
 
     @classmethod
     def mark_complete(cls, reminder_id: str) -> "ReminderUpdate":
-        """Create update to mark reminder as complete."""
+        """Create an update to mark a reminder as complete.
+
+        Args:
+            reminder_id: ID of the reminder to complete.
+
+        Returns:
+            ReminderUpdate instance with is_complete=True.
+        """
         return cls(
             reminder_id=reminder_id,
             changes={"is_complete": True},
@@ -221,7 +361,17 @@ class ReminderUpdate(BaseModel):
 
 
 class Note(BaseModel):
-    """Dex note/timeline item (GET response schema)."""
+    """Dex note/timeline item entity returned from GET requests.
+
+    Notes are timeline entries that record interactions or information
+    about contacts.
+
+    Attributes:
+        id: Unique note identifier.
+        note: Note text content.
+        event_time: When the event occurred (for timeline ordering).
+        contacts: List of associated contacts with 'contact_id' key.
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -232,7 +382,16 @@ class Note(BaseModel):
 
 
 class NoteCreate(BaseModel):
-    """Note creation request body (POST /timeline_items)."""
+    """Request body for creating a note (POST /timeline_items).
+
+    Use `with_contacts()` factory for linking to specific contacts.
+
+    Example:
+        >>> note = NoteCreate.with_contacts(
+        ...     note="Met at conference",
+        ...     contact_ids=["abc123", "def456"]
+        ... )
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -248,7 +407,16 @@ class NoteCreate(BaseModel):
         contact_ids: list[str],
         event_time: str | None = None,
     ) -> "NoteCreate":
-        """Create note with associated contacts."""
+        """Create a note linked to specific contacts.
+
+        Args:
+            note: Note text content.
+            contact_ids: List of contact IDs to associate.
+            event_time: ISO timestamp for timeline ordering.
+
+        Returns:
+            NoteCreate instance ready for API submission.
+        """
         return cls(
             note=note,
             event_time=event_time,
@@ -259,7 +427,14 @@ class NoteCreate(BaseModel):
 
 
 class NoteUpdate(BaseModel):
-    """Note update request body (PUT /timeline_items/{id})."""
+    """Request body for updating a note (PUT /timeline_items/{id}).
+
+    Attributes:
+        note_id: ID of the note to update.
+        changes: Dictionary of field names to new values.
+        update_contacts: Set True to replace associated contacts.
+        timeline_items_contacts: New contact list (only used if above is True).
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -275,7 +450,19 @@ class NoteUpdate(BaseModel):
 
 
 class PaginatedContacts(BaseModel):
-    """Paginated contacts response."""
+    """Paginated response wrapper for contact list queries.
+
+    Attributes:
+        contacts: List of contact dictionaries for this page.
+        total: Total number of contacts matching the query.
+        limit: Maximum results per page.
+        offset: Number of results skipped.
+
+    Example:
+        >>> result = client.get_contacts(limit=10)
+        >>> while result.has_more:
+        ...     result = client.get_contacts(limit=10, offset=result.offset + 10)
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -286,12 +473,19 @@ class PaginatedContacts(BaseModel):
 
     @property
     def has_more(self) -> bool:
-        """Check if there are more results available."""
+        """Check if there are more results available beyond this page."""
         return self.offset + len(self.contacts) < self.total
 
 
 class PaginatedReminders(BaseModel):
-    """Paginated reminders response."""
+    """Paginated response wrapper for reminder list queries.
+
+    Attributes:
+        reminders: List of reminder dictionaries for this page.
+        total: Total number of reminders matching the query.
+        limit: Maximum results per page.
+        offset: Number of results skipped.
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -302,12 +496,19 @@ class PaginatedReminders(BaseModel):
 
     @property
     def has_more(self) -> bool:
-        """Check if there are more results available."""
+        """Check if there are more results available beyond this page."""
         return self.offset + len(self.reminders) < self.total
 
 
 class PaginatedNotes(BaseModel):
-    """Paginated notes response."""
+    """Paginated response wrapper for note list queries.
+
+    Attributes:
+        notes: List of note dictionaries for this page.
+        total: Total number of notes matching the query.
+        limit: Maximum results per page.
+        offset: Number of results skipped.
+    """
 
     model_config = ConfigDict(strict=True)
 
@@ -318,12 +519,26 @@ class PaginatedNotes(BaseModel):
 
     @property
     def has_more(self) -> bool:
-        """Check if there are more results available."""
+        """Check if there are more results available beyond this page."""
         return self.offset + len(self.notes) < self.total
 
 
+# =============================================================================
+# API Response Extractors
+# =============================================================================
+
+
 def extract_contacts_total(data: dict[str, Any]) -> int:
-    """Extract total count from contacts/notes pagination response."""
+    """Extract total count from contacts/notes pagination response.
+
+    The Dex API nests the count in: pagination.total.count
+
+    Args:
+        data: Raw API response dictionary.
+
+    Returns:
+        Total count, or 0 if not found.
+    """
     pagination = data.get("pagination", {})
     if isinstance(pagination, dict):
         total = pagination.get("total", {})
@@ -335,7 +550,16 @@ def extract_contacts_total(data: dict[str, Any]) -> int:
 
 
 def extract_reminders_total(data: dict[str, Any]) -> int:
-    """Extract total count from reminders response."""
+    """Extract total count from reminders pagination response.
+
+    The Dex API nests the count in: total.aggregate.count
+
+    Args:
+        data: Raw API response dictionary.
+
+    Returns:
+        Total count, or 0 if not found.
+    """
     total = data.get("total", {})
     if isinstance(total, dict):
         aggregate = total.get("aggregate", {})
@@ -346,24 +570,35 @@ def extract_reminders_total(data: dict[str, Any]) -> int:
     return 0
 
 
-# =============================================================================
-# Response Entity Extractors
-# =============================================================================
-
-
 def extract_contact_entity(data: dict[str, Any]) -> dict[str, Any]:
-    """Extract contact entity from create/update/delete response."""
-    # Try different response wrapper keys
+    """Extract contact entity from create/update/delete response.
+
+    API responses wrap entities in operation-specific keys.
+    This function unwraps them for consistent handling.
+
+    Args:
+        data: Raw API response dictionary.
+
+    Returns:
+        The unwrapped contact entity, or original data if no wrapper found.
+    """
     keys = ["insert_contacts_one", "update_contacts_by_pk", "delete_contacts_by_pk"]
     for key in keys:
         entity = data.get(key)
         if isinstance(entity, dict):
             return entity
-    return data  # Return as-is if no wrapper found
+    return data
 
 
 def extract_reminder_entity(data: dict[str, Any]) -> dict[str, Any]:
-    """Extract reminder entity from create/update/delete response."""
+    """Extract reminder entity from create/update/delete response.
+
+    Args:
+        data: Raw API response dictionary.
+
+    Returns:
+        The unwrapped reminder entity, or original data if no wrapper found.
+    """
     for key in [
         "insert_reminders_one",
         "update_reminders_by_pk",
@@ -376,7 +611,14 @@ def extract_reminder_entity(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def extract_note_entity(data: dict[str, Any]) -> dict[str, Any]:
-    """Extract note entity from create/update/delete response."""
+    """Extract note entity from create/update/delete response.
+
+    Args:
+        data: Raw API response dictionary.
+
+    Returns:
+        The unwrapped note entity, or original data if no wrapper found.
+    """
     for key in [
         "insert_timeline_items_one",
         "update_timeline_items_by_pk",

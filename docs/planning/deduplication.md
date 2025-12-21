@@ -29,21 +29,24 @@ matching. Items in Future Enhancements are not implemented yet.
 - Threshold is configurable per script.
 
 ## 3. Thresholds Used in Scripts
-- `analyze_duplicates.py`: `threshold=0.95` for reporting.
-- `flag_duplicates.py`: `threshold=0.98` for grouping.
-- `resolve_duplicates.py`: `threshold=0.98` for auto-merge candidates.
+- `scripts/analyze_duplicates.py`: `threshold=0.95` for reporting.
+- `scripts/flag_duplicates.py`: `threshold=0.98` for grouping.
+- `scripts/resolve_duplicates.py`: `threshold=0.98` for auto-merge candidates.
 
 ## 4. Resolution Strategy
 - Build a graph of match edges and cluster with connected components.
 - Merge clusters in SQLite; emails/phones are de-duplicated by value.
 
 ## 5. Workflow
-1. Sync contacts to SQLite (`main.py` or `sync_with_integrity.py`) in the
-   `output/` directory by default (override with `DEX_DATA_DIR`).
-2. Generate a report (`analyze_duplicates.py`).
-3. Flag candidate groups (`flag_duplicates.py`).
-4. Review and choose primaries (`review_duplicates.py`).
-5. Merge confirmed groups (`resolve_duplicates.py`).
+1. Sync contacts to SQLite (`scripts/main.py` or `scripts/sync_with_integrity.py`).
+   Most scripts read from `output/dex_contacts.db` by default (override with
+   `DEX_DATA_DIR`). `scripts/sync_with_integrity.py` currently writes
+   `dex_contacts.db` in the repo root; set `DEX_DATA_DIR=.` for the other tools
+   if you want them to target that database.
+2. Generate a report (`scripts/analyze_duplicates.py`).
+3. Flag candidate groups (`scripts/flag_duplicates.py`).
+4. Review and choose primaries (`scripts/review_duplicates.py`).
+5. Merge confirmed groups (`scripts/resolve_duplicates.py`).
 
 ## 6. Future Enhancements
 - Phone normalization (strip non-digits, handle country codes).

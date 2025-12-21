@@ -1,4 +1,14 @@
-"""Job title parsing for company/role extraction."""
+"""Job title parsing for company/role extraction.
+
+This module provides utilities to parse job title strings that contain
+both role and company information separated by "at" or "@".
+
+Example:
+    >>> from dex_python.enrichment import parse_job_title
+    >>> result = parse_job_title("Software Engineer at Google")
+    >>> print(result)
+    {'role': 'Software Engineer', 'company': 'Google'}
+"""
 
 import re
 
@@ -6,7 +16,7 @@ import re
 def parse_job_title(job_title: str | None) -> dict[str, str | None]:
     """Parse job title to extract role and company.
 
-    Handles patterns like:
+    Handles common patterns like:
     - "Software Engineer at Google"
     - "Developer @ Microsoft"
     - "VP and NJ State Counsel at Fidelity National Title Group"
@@ -15,7 +25,8 @@ def parse_job_title(job_title: str | None) -> dict[str, str | None]:
         job_title: Job title string to parse.
 
     Returns:
-        Dict with 'role' and 'company' keys.
+        Dict with 'role' and 'company' keys. Company is None if
+        no "at" or "@" separator found.
     """
     if job_title is None:
         return {"role": None, "company": None}

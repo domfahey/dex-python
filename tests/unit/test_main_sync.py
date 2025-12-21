@@ -3,7 +3,7 @@
 import json
 import sqlite3
 
-from main import init_db, insert_contact_data
+from scripts.main import init_db, insert_contact_data
 
 
 def test_init_db_creates_name_columns() -> None:

@@ -1,6 +1,6 @@
 # Dex Python
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
@@ -75,17 +75,21 @@ except RateLimitError as exc:
 
 ## SQLite sync
 
-Scripts write contact data to `output/dex_contacts.db` by default (override with
-`DEX_DATA_DIR`):
+Scripts write contact data to a local SQLite database:
 
-- `scripts/main.py` performs a full refresh and recreates tables on each run.
+- `scripts/main.py` performs a full refresh and writes to `output/dex_contacts.db`
+  (override with `DEX_DATA_DIR`).
 - `scripts/sync_with_integrity.py` performs incremental syncs with hashes and preserves
-  deduplication metadata.
+  deduplication metadata. It writes `dex_contacts.db` in the repo root by default.
 
 ```bash
 make sync                                    # Recommended: incremental sync
 uv run python scripts/sync_with_integrity.py # Direct execution
 ```
+
+Note: Most scripts read from `output/dex_contacts.db` via `DEX_DATA_DIR`. If you
+use `scripts/sync_with_integrity.py`, set `DEX_DATA_DIR=.` for the other tools
+or move the database into `output/`.
 
 ## Deduplication workflow
 
@@ -117,8 +121,10 @@ Integration tests are marked with `integration` and require `DEX_API_KEY`.
 - [Getting Started](docs/getting-started.md) - Install, configure, and make a first request
 - [API Reference](docs/api.md) - Python client usage
 - [Architecture](docs/architecture.md) - System design and component overview
-- [Name Parsing](docs/name-parsing.md) - probablepeople parsing and stored fields
+- [Name Parsing](docs/name-parsing.md) - Parsing behavior and stored fields
 - [Dex API Docs](docs/dex_api_docs/README.md) - Local REST API reference
+- [Deduplication Plan](docs/planning/deduplication.md) - Deduplication workflow and thresholds
+- [Roadmap](docs/planning/roadmap.md) - Planned work and priorities
 
 ### Official Dex API
 

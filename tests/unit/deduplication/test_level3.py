@@ -61,6 +61,51 @@ def test_find_fuzzy_name_duplicates_typo(db_connection: sqlite3.Connection) -> N
     assert "c3" not in group["contact_ids"]
 
 
+def test_fuzzy_ignores_empty_last_names(db_connection: sqlite3.Connection) -> None:
+    """Empty last names should not be matched together."""
+    cursor = db_connection.cursor()
+    cursor.execute(
+        "INSERT INTO contacts (id, first_name, last_name) VALUES ('c1', 'John', '')"
+    )
+    cursor.execute(
+        "INSERT INTO contacts (id, first_name, last_name) VALUES ('c2', 'Jane', '')"
+    )
+    cursor.execute(
+        "INSERT INTO contacts (id, first_name, last_name) VALUES ('c3', 'Bob', 'Smith')"
+    )
+    db_connection.commit()
+
+    duplicates = find_fuzzy_name_duplicates(db_connection, threshold=0.9)
+
+    matched_ids = set()
+    for group in duplicates:
+        matched_ids.update(group["contact_ids"])
+
+    assert "c1" not in matched_ids
+    assert "c2" not in matched_ids
+
+
+def test_fuzzy_ignores_whitespace_last_names(db_connection: sqlite3.Connection) -> None:
+    """Whitespace-only last names should not be matched."""
+    cursor = db_connection.cursor()
+    cursor.execute(
+        "INSERT INTO contacts (id, first_name, last_name) VALUES ('c1', 'John', '   ')"
+    )
+    cursor.execute(
+        "INSERT INTO contacts (id, first_name, last_name) VALUES ('c2', 'Jane', '  ')"
+    )
+    db_connection.commit()
+
+    duplicates = find_fuzzy_name_duplicates(db_connection, threshold=0.9)
+
+    matched_ids = set()
+    for group in duplicates:
+        matched_ids.update(group["contact_ids"])
+
+    assert "c1" not in matched_ids
+    assert "c2" not in matched_ids
+
+
 def test_find_fuzzy_name_duplicates_phonetic(db_connection: sqlite3.Connection) -> None:
     """Test finding duplicates with phonetic similarity."""
     cursor = db_connection.cursor()

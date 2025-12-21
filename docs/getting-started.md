@@ -64,9 +64,13 @@ Scripts write contact data to `output/dex_contacts.db` by default (override with
 `DEX_DATA_DIR`):
 
 ```bash
-uv run python main.py               # Full refresh (recreates tables)
-uv run python sync_with_integrity.py  # Incremental sync with hashes
+uv run python scripts/main.py                # Full refresh (recreates tables)
+uv run python scripts/sync_with_integrity.py # Incremental sync with hashes
 ```
+
+Note: `scripts/sync_with_integrity.py` writes `dex_contacts.db` in the repo root
+by default. If you want other scripts to target that database, set
+`DEX_DATA_DIR=.` when running them.
 
 ## Best practices
 
@@ -78,4 +82,4 @@ uv run python sync_with_integrity.py  # Incremental sync with hashes
 
 - Read `docs/api.md` for client API details.
 - Browse `docs/dex_api_docs/README.md` for the Dex REST reference.
-- Review `DEDUPLICATION_PLAN.md` before running the merge workflow.
+- Review `docs/planning/deduplication.md` before running the merge workflow.

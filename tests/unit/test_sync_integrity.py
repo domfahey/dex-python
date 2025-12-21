@@ -5,7 +5,7 @@ import sqlite3
 
 import pytest
 
-from sync_with_integrity import init_db, save_contacts_batch
+from scripts.sync_with_integrity import init_db, save_contacts_batch
 
 
 @pytest.fixture

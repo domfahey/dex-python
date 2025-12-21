@@ -1,4 +1,19 @@
-"""Async Dex API client."""
+"""Asynchronous HTTP client for the Dex CRM API.
+
+This module provides AsyncDexClient for async/await usage patterns.
+For synchronous operations, see DexClient in client.py.
+
+Example:
+    >>> from dex_python import AsyncDexClient
+    >>> async with AsyncDexClient() as client:
+    ...     contacts = await client.get_contacts(limit=10)
+    ...     for contact in contacts:
+    ...         print(contact["first_name"])
+
+Environment Variables:
+    DEX_API_KEY: Required. Your Dex API key.
+    DEX_BASE_URL: Optional. Defaults to https://api.getdex.com/api/rest
+"""
 
 import asyncio
 from typing import Any, Self
@@ -32,12 +47,26 @@ from .models import (
     extract_reminders_total,
 )
 
-# Status codes that should be retried
+# HTTP status codes that indicate transient failures worth retrying
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 class AsyncDexClient:
-    """Async client for the Dex CRM API."""
+    """Asynchronous client for the Dex CRM API.
+
+    Provides async versions of all CRUD operations for contacts, reminders,
+    and notes. Supports async context manager protocol.
+
+    Attributes:
+        settings: Configuration with API key and base URL.
+        max_retries: Number of retry attempts for transient errors.
+        retry_delay: Base delay (seconds) between retries.
+
+    Example:
+        >>> async with AsyncDexClient() as client:
+        ...     contact = await client.get_contact("abc123")
+        ...     print(contact["first_name"])
+    """
 
     def __init__(
         self,
@@ -45,12 +74,13 @@ class AsyncDexClient:
         max_retries: int = 0,
         retry_delay: float = 1.0,
     ) -> None:
-        """Initialize the async client with settings.
+        """Initialize the async Dex API client.
 
         Args:
-            settings: API settings (loads from env if not provided)
-            max_retries: Max retry attempts for transient errors (0 = no retries)
-            retry_delay: Base delay between retries in seconds (exponential backoff)
+            settings: API configuration. If None, loads from environment.
+            max_retries: Max retry attempts for transient errors (default: 0).
+            retry_delay: Base delay between retries in seconds.
+                Uses exponential backoff: delay * 2^attempt.
         """
         self.settings = settings if settings is not None else Settings()  # type: ignore[call-arg]
         self.max_retries = max_retries
@@ -65,11 +95,25 @@ class AsyncDexClient:
         )
 
     def _should_retry(self, status_code: int) -> bool:
-        """Check if request should be retried based on status code."""
+        """Check if a request should be retried based on HTTP status code."""
         return status_code in RETRYABLE_STATUS_CODES
 
     def _handle_error(self, response: httpx.Response, endpoint: str) -> None:
-        """Handle HTTP error responses and raise appropriate exceptions."""
+        """Convert HTTP error response to appropriate exception.
+
+        Args:
+            response: The HTTP response with error status.
+            endpoint: The API endpoint that was called.
+
+        Raises:
+            AuthenticationError: For 401 responses.
+            RateLimitError: For 429 responses.
+            ValidationError: For 400 responses.
+            ContactNotFoundError: For 404 on /contacts endpoints.
+            ReminderNotFoundError: For 404 on /reminders endpoints.
+            NoteNotFoundError: For 404 on /timeline_items endpoints.
+            DexAPIError: For all other error responses.
+        """
         status_code = response.status_code
         try:
             data = response.json()
@@ -113,7 +157,16 @@ class AsyncDexClient:
     async def _request_with_retry(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> httpx.Response:
-        """Make an async request with retry logic for transient errors."""
+        """Execute async HTTP request with retry for transient errors.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, DELETE).
+            endpoint: API endpoint path.
+            **kwargs: Additional arguments passed to httpx.request.
+
+        Returns:
+            The HTTP response (may be error response if retries exhausted).
+        """
         last_response: httpx.Response | None = None
 
         for attempt in range(self.max_retries + 1):
@@ -138,7 +191,19 @@ class AsyncDexClient:
     async def _request(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> dict[str, Any]:
-        """Make an async API request."""
+        """Execute async API request and return parsed JSON response.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, DELETE).
+            endpoint: API endpoint path.
+            **kwargs: Additional arguments passed to httpx.request.
+
+        Returns:
+            Parsed JSON response as dictionary.
+
+        Raises:
+            DexAPIError: If the request fails.
+        """
         response = await self._request_with_retry(method, endpoint, **kwargs)
         if response.status_code >= 400:
             self._handle_error(response, endpoint)
@@ -152,7 +217,15 @@ class AsyncDexClient:
     async def get_contacts(
         self, limit: int = 100, offset: int = 0
     ) -> list[dict[str, Any]]:
-        """Fetch paginated list of contacts."""
+        """Fetch a paginated list of contacts.
+
+        Args:
+            limit: Maximum number of contacts to return (default: 100).
+            offset: Number of contacts to skip for pagination.
+
+        Returns:
+            List of contact dictionaries.
+        """
         endpoint = "/contacts"
         response = await self._request_with_retry(
             "GET",
@@ -168,7 +241,15 @@ class AsyncDexClient:
     async def get_contacts_paginated(
         self, limit: int = 100, offset: int = 0
     ) -> PaginatedContacts:
-        """Fetch paginated contacts with metadata."""
+        """Fetch contacts with pagination metadata.
+
+        Args:
+            limit: Maximum number of contacts to return (default: 100).
+            offset: Number of contacts to skip for pagination.
+
+        Returns:
+            PaginatedContacts with contacts list and has_more property.
+        """
         endpoint = "/contacts"
         response = await self._request_with_retry(
             "GET",
@@ -186,7 +267,14 @@ class AsyncDexClient:
         )
 
     async def get_contact(self, contact_id: str) -> dict[str, Any]:
-        """Fetch a single contact by ID."""
+        """Fetch a single contact by ID.
+
+        Args:
+            contact_id: The unique contact identifier.
+
+        Returns:
+            Contact dictionary, or empty dict if not found.
+        """
         data = await self._request("GET", f"/contacts/{contact_id}")
         contacts = data.get("contacts", [])
         if contacts:
@@ -195,7 +283,14 @@ class AsyncDexClient:
         return {}
 
     async def get_contact_by_email(self, email: str) -> dict[str, Any] | None:
-        """Fetch a contact by email address."""
+        """Look up a contact by email address.
+
+        Args:
+            email: Email address to search for.
+
+        Returns:
+            Contact dictionary if found, None otherwise.
+        """
         data = await self._request("GET", "/search/contacts", params={"email": email})
         contacts = data.get("search_contacts_by_exact_email", [])
         if contacts:
@@ -204,7 +299,15 @@ class AsyncDexClient:
         return None
 
     async def create_contact(self, contact: ContactCreate) -> dict[str, Any]:
-        """Create a new contact."""
+        """Create a new contact.
+
+        Args:
+            contact: Contact data. Use ContactCreate.with_email() or
+                ContactCreate.with_phone() for convenience.
+
+        Returns:
+            The created contact data including server-assigned ID.
+        """
         data = await self._request(
             "POST",
             "/contacts",
@@ -213,7 +316,14 @@ class AsyncDexClient:
         return dict(extract_contact_entity(data))
 
     async def update_contact(self, update: ContactUpdate) -> dict[str, Any]:
-        """Update an existing contact."""
+        """Update an existing contact.
+
+        Args:
+            update: Update specification with contact_id and changes.
+
+        Returns:
+            The updated contact data.
+        """
         data = await self._request(
             "PUT",
             f"/contacts/{update.contact_id}",
@@ -222,7 +332,14 @@ class AsyncDexClient:
         return dict(extract_contact_entity(data))
 
     async def delete_contact(self, contact_id: str) -> dict[str, Any]:
-        """Delete a contact by ID."""
+        """Delete a contact by ID.
+
+        Args:
+            contact_id: The unique contact identifier.
+
+        Returns:
+            The deleted contact data.
+        """
         data = await self._request("DELETE", f"/contacts/{contact_id}")
         return dict(extract_contact_entity(data))
 
@@ -233,7 +350,15 @@ class AsyncDexClient:
     async def get_reminders(
         self, limit: int = 100, offset: int = 0
     ) -> list[dict[str, Any]]:
-        """Fetch paginated list of reminders."""
+        """Fetch a paginated list of reminders.
+
+        Args:
+            limit: Maximum number of reminders to return (default: 100).
+            offset: Number of reminders to skip for pagination.
+
+        Returns:
+            List of reminder dictionaries.
+        """
         data = await self._request(
             "GET",
             "/reminders",
@@ -245,7 +370,15 @@ class AsyncDexClient:
     async def get_reminders_paginated(
         self, limit: int = 100, offset: int = 0
     ) -> PaginatedReminders:
-        """Fetch paginated reminders with metadata."""
+        """Fetch reminders with pagination metadata.
+
+        Args:
+            limit: Maximum number of reminders to return (default: 100).
+            offset: Number of reminders to skip for pagination.
+
+        Returns:
+            PaginatedReminders with reminders list and has_more property.
+        """
         endpoint = "/reminders"
         response = await self._request_with_retry(
             "GET",
@@ -263,7 +396,15 @@ class AsyncDexClient:
         )
 
     async def create_reminder(self, reminder: ReminderCreate) -> dict[str, Any]:
-        """Create a new reminder."""
+        """Create a new reminder.
+
+        Args:
+            reminder: Reminder data. Use ReminderCreate.with_contacts()
+                to link to specific contacts.
+
+        Returns:
+            The created reminder data including server-assigned ID.
+        """
         data = await self._request(
             "POST",
             "/reminders",
@@ -272,7 +413,15 @@ class AsyncDexClient:
         return dict(extract_reminder_entity(data))
 
     async def update_reminder(self, update: ReminderUpdate) -> dict[str, Any]:
-        """Update an existing reminder."""
+        """Update an existing reminder.
+
+        Args:
+            update: Update specification. Use ReminderUpdate.mark_complete()
+                for the common completion pattern.
+
+        Returns:
+            The updated reminder data.
+        """
         data = await self._request(
             "PUT",
             f"/reminders/{update.reminder_id}",
@@ -281,7 +430,14 @@ class AsyncDexClient:
         return dict(extract_reminder_entity(data))
 
     async def delete_reminder(self, reminder_id: str) -> dict[str, Any]:
-        """Delete a reminder by ID."""
+        """Delete a reminder by ID.
+
+        Args:
+            reminder_id: The unique reminder identifier.
+
+        Returns:
+            The deleted reminder data.
+        """
         data = await self._request("DELETE", f"/reminders/{reminder_id}")
         return dict(extract_reminder_entity(data))
 
@@ -292,7 +448,15 @@ class AsyncDexClient:
     async def get_notes(
         self, limit: int = 100, offset: int = 0
     ) -> list[dict[str, Any]]:
-        """Fetch paginated list of notes."""
+        """Fetch a paginated list of notes (timeline items).
+
+        Args:
+            limit: Maximum number of notes to return (default: 100).
+            offset: Number of notes to skip for pagination.
+
+        Returns:
+            List of note dictionaries.
+        """
         data = await self._request(
             "GET",
             "/timeline_items",
@@ -304,7 +468,15 @@ class AsyncDexClient:
     async def get_notes_paginated(
         self, limit: int = 100, offset: int = 0
     ) -> PaginatedNotes:
-        """Fetch paginated notes with metadata."""
+        """Fetch notes with pagination metadata.
+
+        Args:
+            limit: Maximum number of notes to return (default: 100).
+            offset: Number of notes to skip for pagination.
+
+        Returns:
+            PaginatedNotes with notes list and has_more property.
+        """
         endpoint = "/timeline_items"
         response = await self._request_with_retry(
             "GET",
@@ -322,13 +494,28 @@ class AsyncDexClient:
         )
 
     async def get_notes_by_contact(self, contact_id: str) -> list[dict[str, Any]]:
-        """Fetch notes for a specific contact."""
+        """Fetch all notes associated with a specific contact.
+
+        Args:
+            contact_id: The unique contact identifier.
+
+        Returns:
+            List of note dictionaries for this contact.
+        """
         data = await self._request("GET", f"/timeline_items/contacts/{contact_id}")
         result: list[dict[str, Any]] = data.get("timeline_items", [])
         return result
 
     async def create_note(self, note: NoteCreate) -> dict[str, Any]:
-        """Create a new note."""
+        """Create a new note (timeline item).
+
+        Args:
+            note: Note data. Use NoteCreate.with_contacts()
+                to link to specific contacts.
+
+        Returns:
+            The created note data including server-assigned ID.
+        """
         data = await self._request(
             "POST",
             "/timeline_items",
@@ -337,7 +524,14 @@ class AsyncDexClient:
         return dict(extract_note_entity(data))
 
     async def update_note(self, update: NoteUpdate) -> dict[str, Any]:
-        """Update an existing note."""
+        """Update an existing note.
+
+        Args:
+            update: Update specification with note_id and changes.
+
+        Returns:
+            The updated note data.
+        """
         data = await self._request(
             "PUT",
             f"/timeline_items/{update.note_id}",
@@ -346,20 +540,29 @@ class AsyncDexClient:
         return dict(extract_note_entity(data))
 
     async def delete_note(self, note_id: str) -> dict[str, Any]:
-        """Delete a note by ID."""
+        """Delete a note by ID.
+
+        Args:
+            note_id: The unique note identifier.
+
+        Returns:
+            The deleted note data.
+        """
         data = await self._request("DELETE", f"/timeline_items/{note_id}")
         return dict(extract_note_entity(data))
 
     # =========================================================================
-    # Client Management
+    # Client Lifecycle
     # =========================================================================
 
     async def close(self) -> None:
-        """Close the HTTP client."""
+        """Close the underlying async HTTP client and release resources."""
         await self._client.aclose()
 
     async def __aenter__(self) -> Self:
+        """Enter async context manager (returns self)."""
         return self
 
     async def __aexit__(self, *args: object) -> None:
+        """Exit async context manager (closes client)."""
         await self.close()

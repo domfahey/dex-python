@@ -1,4 +1,21 @@
-"""Duplicate detection, clustering, and merging logic."""
+"""Duplicate detection, clustering, and merging logic.
+
+This module provides a multi-level deduplication system for contact records:
+- Level 1: Exact email and phone matching
+- Level 1.5: Birthday + name matching
+- Level 2: Exact name + job title matching
+- Level 3: Fuzzy name matching using Jaro-Winkler similarity
+
+The clustering function uses graph theory (connected components) to group
+related duplicates that may have been found through different match types.
+
+Example:
+    >>> import sqlite3
+    >>> conn = sqlite3.connect("contacts.db")
+    >>> email_dups = find_email_duplicates(conn)
+    >>> phone_dups = find_phone_duplicates(conn)
+    >>> clusters = cluster_duplicates(email_dups + phone_dups)
+"""
 
 import sqlite3
 from typing import Any
@@ -8,7 +25,17 @@ import networkx as nx
 
 
 def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Find groups of contacts sharing the same email address (case-insensitive)."""
+    """Find groups of contacts sharing the same email address.
+
+    Uses case-insensitive matching on email addresses.
+
+    Args:
+        conn: SQLite database connection.
+
+    Returns:
+        List of match dictionaries with 'match_type', 'match_value',
+        and 'contact_ids' keys.
+    """
     cursor = conn.cursor()
 
     query = """
@@ -34,7 +61,15 @@ def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Find groups of contacts sharing the same phone number."""
+    """Find groups of contacts sharing the same phone number.
+
+    Args:
+        conn: SQLite database connection.
+
+    Returns:
+        List of match dictionaries with 'match_type', 'match_value',
+        and 'contact_ids' keys.
+    """
     cursor = conn.cursor()
 
     query = """
@@ -62,8 +97,16 @@ def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 def find_birthday_name_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """Find duplicates with same name AND same birthday month-day.
 
+    Level 1.5 matching: more confident than name-only but less than email.
     Excludes placeholder date 2001-01-01. Matches on month-day only since
     the year field often contains entry date rather than birth year.
+
+    Args:
+        conn: SQLite database connection.
+
+    Returns:
+        List of match dictionaries with 'match_type', 'match_value',
+        and 'contact_ids' keys.
     """
     cursor = conn.cursor()
 
@@ -97,7 +140,18 @@ def find_birthday_name_duplicates(conn: sqlite3.Connection) -> list[dict[str, An
 
 
 def find_name_and_title_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Find duplicates based on exact Full Name + Job Title match."""
+    """Find duplicates based on exact full name + job title match.
+
+    Level 2 matching: requires both name and title to match exactly
+    (case-insensitive, trimmed).
+
+    Args:
+        conn: SQLite database connection.
+
+    Returns:
+        List of match dictionaries with 'match_type', 'match_value',
+        and 'contact_ids' keys.
+    """
     cursor = conn.cursor()
 
     query = """
@@ -131,7 +185,19 @@ def find_name_and_title_duplicates(conn: sqlite3.Connection) -> list[dict[str, A
 def find_fuzzy_name_duplicates(
     conn: sqlite3.Connection, threshold: float = 0.9
 ) -> list[dict[str, Any]]:
-    """Find duplicates using fuzzy name matching with blocking."""
+    """Find duplicates using fuzzy name matching with blocking.
+
+    Level 3 matching: uses Jaro-Winkler similarity on full names.
+    Blocking by Soundex reduces O(n²) comparisons to near-linear.
+
+    Args:
+        conn: SQLite database connection.
+        threshold: Minimum Jaro-Winkler score (0.0-1.0) for a match.
+
+    Returns:
+        List of match dictionaries with 'match_type', 'match_value',
+        and 'contact_ids' keys.
+    """
     cursor = conn.cursor()
 
     query = """
@@ -183,7 +249,17 @@ def find_fuzzy_name_duplicates(
 
 
 def cluster_duplicates(matches: list[dict[str, Any]]) -> list[list[str]]:
-    """Cluster multiple matches into groups using graph connected components."""
+    """Cluster match pairs into transitive groups using connected components.
+
+    If A matches B and B matches C, they all end up in the same cluster
+    even if A and C never matched directly.
+
+    Args:
+        matches: List of match dictionaries with 'contact_ids' key.
+
+    Returns:
+        List of clusters, where each cluster is a list of contact IDs.
+    """
     graph: nx.Graph[str] = nx.Graph()
     for match in matches:
         ids = match["contact_ids"]
@@ -196,7 +272,24 @@ def cluster_duplicates(matches: list[dict[str, Any]]) -> list[list[str]]:
 def merge_cluster(
     conn: sqlite3.Connection, contact_ids: list[str], primary_id: str | None = None
 ) -> str:
-    """Merge multiple contacts into a single primary record."""
+    """Merge multiple contacts into a single primary record.
+
+    Consolidates data from all contacts into the primary record, keeping
+    the most complete data. Moves all emails and phones to the primary,
+    deduplicates them, and deletes the merged contacts.
+
+    Args:
+        conn: SQLite database connection.
+        contact_ids: List of contact IDs to merge.
+        primary_id: Optional ID to use as the primary record.
+            If None, auto-selects the most complete record.
+
+    Returns:
+        The ID of the primary (surviving) contact.
+
+    Raises:
+        ValueError: If no contact IDs provided or contacts not found.
+    """
     if not contact_ids:
         raise ValueError("No contact IDs provided")
 

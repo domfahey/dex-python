@@ -22,14 +22,21 @@ local deduplication workflow. Items are grouped by priority and scope.
     - [x] Level 3: Fuzzy matching (Jaro-Winkler similarity with Phonetic blocking).
     - [x] Graph-based clustering (`networkx`) to group transitive duplicates.
 - **Tooling & UX:**
-    - [x] Interactive TUI (`review_duplicates.py`) for labeling/resolving duplicates.
-    - [x] Markdown reporting (`analyze_duplicates.py`) for duplicate auditing.
+    - [x] Interactive TUI (`scripts/review_duplicates.py`) for labeling/resolving duplicates.
+    - [x] Markdown reporting (`scripts/analyze_duplicates.py`) for duplicate auditing.
     - [x] Comprehensive test suite refactored into unit/integration structures.
     - [x] Makefiles for linting, formatting, and type checking.
+- **Documentation & Onboarding:**
+    - [x] Getting Started Guide: Add install, config, and verification quick start docs.
+    - [x] Health Check: Add a minimal setup verification flow (first API call) with expected output.
+    - [x] Configuration Tips: Explain environment variables, base URL overrides, and retry guidance.
+    - [x] Name Parsing Guide: Document name parsing fields, best practices, and example queries.
+- **Contact Enrichment:**
+    - [x] Name Parsing: Basic parsing stored in SQLite.
 
 ## Near Term (Stability and Correctness)
 
-- [ ] **Unified CLI:** Consolidate `sync_with_integrity.py`, `flag_duplicates.py`, and `review_duplicates.py` into a single `dex-python` CLI app using Typer.
+- [ ] **Unified CLI:** Consolidate `scripts/sync_with_integrity.py`, `scripts/flag_duplicates.py`, and `scripts/review_duplicates.py` into a single `dex-python` CLI app using Typer.
 - [ ] **Database Migrations:** Replace ad-hoc `ALTER TABLE` checks with a formal migration tool (e.g., Alembic) to manage `dex_contacts.db` schema evolution.
 - [ ] **Advanced Normalization:**
     - [ ] Phone numbers: Use `phonenumbers` lib for E.164 parsing/formatting.
@@ -46,14 +53,10 @@ local deduplication workflow. Items are grouped by priority and scope.
 
 ## Documentation & Onboarding
 
-- [x] **Getting Started Guide:** Add install, config, and verification quick start docs.
 - [ ] **Alternate Install Paths:** Document `pipx`/`pip`, Poetry, and Conda install options alongside `uv`.
-- [x] **Health Check:** Add a minimal setup verification flow (first API call) with expected output.
 - [ ] **Troubleshooting Guide:** Cover common errors (401, 429, `.env` loading) with remedies.
 - [ ] **First Tasks Examples:** Provide create/update/delete and pagination examples, plus an async snippet.
-- [x] **Configuration Tips:** Explain environment variables, base URL overrides, and retry guidance.
 - [ ] **SQLite Workflow Tips:** Add example queries against `output/dex_contacts.db` and a safe dedupe checklist.
-- [x] **Name Parsing Guide:** Document probablepeople fields, best practices, and example queries.
 
 ## Data Enrichment (LinkedIn)
 
@@ -74,9 +77,8 @@ local deduplication workflow. Items are grouped by priority and scope.
 - [ ] **Census Geocoding API:** Evaluate the free U.S. Census geocoder to standardize and geocode US addresses.
 - [ ] **Timezone Inference:** Infer timezone from location fields to power reminders.
 - [ ] **Phone Enrichment:** Normalize to E.164, infer country from locale/address, validate with carrier lookups.
-- [x] **Name Parsing:** Split full names into components and store structured output in SQLite.
 - [ ] **Phonetic Keys:** Add phonetic keys for improved name matching.
-- [x] **Name Parsing Library:** Integrate `probablepeople` for structured name parsing and normalization.
+- [ ] **Name Parsing Library:** Wire `probablepeople` into name parsing for richer components.
 - [ ] **Social Handle Discovery:** Infer likely GitHub/Twitter/LinkedIn handles from name + company patterns.
 - [ ] **Company Logos:** Fetch and cache company logos for UI display.
 - [ ] **Relationship Signals:** Parse notes for "met at", "introduced by", "works with" to build network edges.

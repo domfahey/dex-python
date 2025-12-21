@@ -40,9 +40,9 @@ The application is structured into four distinct layers:
 
 ### 3.1. Interface Layer (CLI)
 Entry points for user interaction. Built using `rich` for TUI (Text User Interface) elements.
-*   `sync_with_integrity.py`: Orchestrator for the synchronization pipeline.
-*   `review_duplicates.py`: Interactive tool for human-in-the-loop resolution.
-*   `analyze_duplicates.py`: Read-only reporting engine.
+*   `scripts/sync_with_integrity.py`: Orchestrator for the synchronization pipeline.
+*   `scripts/review_duplicates.py`: Interactive tool for human-in-the-loop resolution.
+*   `scripts/analyze_duplicates.py`: Read-only reporting engine.
 
 ### 3.2. Application Logic Layer
 *   **Deduplication Engine (`src/dex_python/deduplication.py`):**
@@ -113,7 +113,7 @@ sequenceDiagram
 
 | Component | Technology | Reasoning | 
 | :--- | :--- | :--- |
-| **Language** | Python 3.12+ | Robust ecosystem for data and async IO. |
+| **Language** | Python 3.11+ | Robust ecosystem for data and async IO. |
 | **Package Manager** | `uv` | Extremely fast dependency resolution and environment management. |
 | **HTTP Client** | `httpx` | Modern async support, stronger typing than requests. |
 | **Database** | SQLite 3 | Zero-configuration, ACID compliant, distinct file for backups. |
@@ -162,4 +162,3 @@ Currently, this application functions as a **Local Automation Tool**.
 4.  **Network Bandwidth:**
     *   *Issue:* Must fetch full dataset to detect deletions/changes (API limitation).
     *   *Solution:* Advocate for a `GET /contacts?updated_since=...` endpoint from the API provider.
-

@@ -1,4 +1,22 @@
-"""Sync enriched data back to Dex API."""
+"""Sync enriched data back to Dex API.
+
+This module provides utilities to push locally enriched contact data
+(e.g., parsed company/role from job titles) back to the Dex API.
+
+Three sync modes are available:
+- NOTES: Add enrichment as timeline notes
+- DESCRIPTION: Append enrichment to description field
+- JOB_TITLE: Reformat job title as "Role | Company"
+
+Example:
+    >>> from dex_python import DexClient
+    >>> from dex_python.sync_back import run_sync, SyncBackMode
+    >>> import sqlite3
+    >>> conn = sqlite3.connect("contacts.db")
+    >>> with DexClient() as client:
+    ...     stats = run_sync(conn, client, SyncBackMode.NOTES)
+    ...     print(f"Created {stats['created']} notes")
+"""
 
 import json
 import sqlite3
@@ -13,7 +31,13 @@ from .models import ContactUpdate, NoteCreate
 
 
 class SyncBackMode(Enum):
-    """Available modes for syncing enrichment data back to Dex."""
+    """Available modes for syncing enrichment data back to Dex.
+
+    Attributes:
+        NOTES: Create timeline notes with enrichment data.
+        DESCRIPTION: Append enrichment to contact description.
+        JOB_TITLE: Reformat job title as "Role | Company".
+    """
 
     NOTES = "notes"
     DESCRIPTION = "description"

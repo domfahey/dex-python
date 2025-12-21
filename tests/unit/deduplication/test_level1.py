@@ -92,6 +92,30 @@ def test_find_email_duplicates_basic(db_connection: sqlite3.Connection) -> None:
     assert set(group["contact_ids"]) == {"c1", "c2"}
 
 
+def test_find_email_duplicates_no_repeat_ids(
+    db_connection: sqlite3.Connection,
+) -> None:
+    """Same email twice on one contact should not produce duplicate IDs."""
+    cursor = db_connection.cursor()
+    cursor.execute("INSERT INTO contacts (id) VALUES ('c1'), ('c2')")
+    cursor.execute(
+        "INSERT INTO emails (contact_id, email) VALUES ('c1', 'john@example.com')"
+    )
+    cursor.execute(
+        "INSERT INTO emails (contact_id, email) VALUES ('c1', 'john@example.com')"
+    )
+    cursor.execute(
+        "INSERT INTO emails (contact_id, email) VALUES ('c2', 'john@example.com')"
+    )
+    db_connection.commit()
+
+    duplicates = find_email_duplicates(db_connection)
+
+    assert len(duplicates) == 1
+    contact_ids = duplicates[0]["contact_ids"]
+    assert len(contact_ids) == len(set(contact_ids))
+
+
 def test_find_email_duplicates_case_insensitive(
     db_connection: sqlite3.Connection,
 ) -> None:
@@ -128,3 +152,27 @@ def test_find_phone_duplicates_basic(db_connection: sqlite3.Connection) -> None:
     assert len(duplicates) == 1
     assert set(duplicates[0]["contact_ids"]) == {"c1", "c2"}
     assert duplicates[0]["match_type"] == "phone"
+
+
+def test_find_phone_duplicates_no_repeat_ids(
+    db_connection: sqlite3.Connection,
+) -> None:
+    """Same phone twice on one contact should not produce duplicate IDs."""
+    cursor = db_connection.cursor()
+    cursor.execute("INSERT INTO contacts (id) VALUES ('c1'), ('c2')")
+    cursor.execute(
+        "INSERT INTO phones (contact_id, phone_number) VALUES ('c1', '555-1234')"
+    )
+    cursor.execute(
+        "INSERT INTO phones (contact_id, phone_number) VALUES ('c1', '555-1234')"
+    )
+    cursor.execute(
+        "INSERT INTO phones (contact_id, phone_number) VALUES ('c2', '555-1234')"
+    )
+    db_connection.commit()
+
+    duplicates = find_phone_duplicates(db_connection)
+
+    assert len(duplicates) == 1
+    contact_ids = duplicates[0]["contact_ids"]
+    assert len(contact_ids) == len(set(contact_ids))
