@@ -182,6 +182,70 @@ def find_name_and_title_duplicates(conn: sqlite3.Connection) -> list[dict[str, A
     return results
 
 
+def _create_soundex_blocks(
+    rows: list[tuple[str, str, str]]
+) -> dict[str, list[dict[str, str]]]:
+    """Create soundex-based blocks for efficient fuzzy matching.
+
+    Groups contacts by the soundex/metaphone code of their last name to
+    reduce O(n²) comparisons to near-linear time.
+
+    Args:
+        rows: List of (id, first_name, last_name) tuples.
+
+    Returns:
+        Dictionary mapping soundex keys to lists of contact records.
+    """
+    blocks: dict[str, list[dict[str, str]]] = {}
+    for rid, first, last in rows:
+        first, last = first.strip(), last.strip()
+
+        # Skip empty names after stripping
+        if not first or not last:
+            continue
+
+        try:
+            key = jellyfish.metaphone(last) or last.lower()[:2]
+        except Exception:
+            key = last.lower()[:2]
+
+        if key not in blocks:
+            blocks[key] = []
+        blocks[key].append({"id": rid, "full_name": f"{first} {last}"})
+
+    return blocks
+
+
+def _find_matches_in_block(
+    items: list[dict[str, str]], threshold: float
+) -> list[dict[str, Any]]:
+    """Find fuzzy name matches within a single block.
+
+    Args:
+        items: List of contacts in the same soundex block.
+        threshold: Minimum Jaro-Winkler similarity score (0.0-1.0).
+
+    Returns:
+        List of match dictionaries.
+    """
+    matches = []
+    for i in range(len(items)):
+        for j in range(i + 1, len(items)):
+            p1, p2 = items[i], items[j]
+            score = jellyfish.jaro_winkler_similarity(p1["full_name"], p2["full_name"])
+            if score >= threshold:
+                matches.append(
+                    {
+                        "match_type": "fuzzy_name",
+                        "match_value": (
+                            f"{p1['full_name']} <-> {p2['full_name']} ({score:.2f})"
+                        ),
+                        "contact_ids": [p1["id"], p2["id"]],
+                    }
+                )
+    return matches
+
+
 def find_fuzzy_name_duplicates(
     conn: sqlite3.Connection, threshold: float = 0.9
 ) -> list[dict[str, Any]]:
@@ -208,43 +272,16 @@ def find_fuzzy_name_duplicates(
     cursor.execute(query)
     rows = cursor.fetchall()
 
-    blocks: dict[str, list[dict[str, str]]] = {}
-    for rid, first, last in rows:
-        first, last = first.strip(), last.strip()
+    # Create soundex-based blocks for efficient comparison
+    blocks = _create_soundex_blocks(rows)
 
-        # Skip empty names after stripping
-        if not first or not last:
-            continue
-
-        try:
-            key = jellyfish.metaphone(last) or last.lower()[:2]
-        except Exception:
-            key = last.lower()[:2]
-
-        if key not in blocks:
-            blocks[key] = []
-        blocks[key].append({"id": rid, "full_name": f"{first} {last}"})
-
+    # Find matches within each block
     results = []
     for items in blocks.values():
         if len(items) < 2:
             continue
-        for i in range(len(items)):
-            for j in range(i + 1, len(items)):
-                p1, p2 = items[i], items[j]
-                score = jellyfish.jaro_winkler_similarity(
-                    p1["full_name"], p2["full_name"]
-                )
-                if score >= threshold:
-                    results.append(
-                        {
-                            "match_type": "fuzzy_name",
-                            "match_value": (
-                                f"{p1['full_name']} <-> {p2['full_name']} ({score:.2f})"
-                            ),
-                            "contact_ids": [p1["id"], p2["id"]],
-                        }
-                    )
+        results.extend(_find_matches_in_block(items, threshold))
+
     return results
 
 
@@ -267,6 +304,99 @@ def cluster_duplicates(matches: list[dict[str, Any]]) -> list[list[str]]:
             for j in range(i + 1, len(ids)):
                 graph.add_edge(ids[i], ids[j])
     return [list(c) for c in nx.connected_components(graph)]
+
+
+def _select_primary_row(
+    rows: list[tuple[Any, ...]], primary_id: str | None
+) -> tuple[tuple[Any, ...], list[tuple[Any, ...]], str]:
+    """Select the primary contact row from a list of contact rows.
+
+    Args:
+        rows: List of contact rows from database.
+        primary_id: Optional ID to use as primary. If None, auto-selects
+            the most complete record.
+
+    Returns:
+        Tuple of (primary_row, sorted_rows, primary_id).
+
+    Raises:
+        ValueError: If primary_id is provided but not found in rows.
+    """
+    if primary_id:
+        # Find the row corresponding to primary_id
+        primary_row_list = [r for r in rows if r[0] == primary_id]
+        if not primary_row_list:
+            raise ValueError(f"Primary ID {primary_id} not found in contact cluster")
+        primary_row = primary_row_list[0]
+        # Remove primary from candidates to merge FROM
+        other_rows = [r for r in rows if r[0] != primary_id]
+        sorted_rows = [primary_row] + other_rows
+    else:
+        # Auto-select best primary based on completeness
+        def score_row(row: tuple[Any, ...]) -> int:
+            return sum(1 for field in row if field is not None and field != "")
+
+        sorted_rows = sorted(rows, key=score_row, reverse=True)
+        primary_row = sorted_rows[0]
+        primary_id = primary_row[0]
+
+    return primary_row, sorted_rows, primary_id
+
+
+def _merge_contact_fields(
+    primary_row: tuple[Any, ...], other_rows: list[tuple[Any, ...]]
+) -> list[Any]:
+    """Merge contact fields, filling in missing data from other rows.
+
+    Args:
+        primary_row: The primary contact row.
+        other_rows: Other contact rows to merge data from.
+
+    Returns:
+        Merged contact data as a list.
+    """
+    current_primary = list(primary_row)
+    for other_row in other_rows:
+        for i in range(len(current_primary)):
+            if (current_primary[i] is None or current_primary[i] == "") and other_row[
+                i
+            ]:
+                current_primary[i] = other_row[i]
+    return current_primary
+
+
+def _consolidate_related_records(
+    cursor: sqlite3.Cursor, primary_id: str, contact_ids: list[str], placeholders: str
+) -> None:
+    """Consolidate emails and phones for merged contacts.
+
+    Moves all emails and phones to the primary contact and deduplicates them.
+
+    Args:
+        cursor: Database cursor.
+        primary_id: The primary contact ID.
+        contact_ids: All contact IDs being merged.
+        placeholders: SQL placeholders for contact_ids.
+    """
+    for table in ["emails", "phones"]:
+        # Move all records to primary contact
+        cursor.execute(
+            f"UPDATE {table} SET contact_id = ? WHERE contact_id IN ({placeholders})",
+            [primary_id] + contact_ids,
+        )
+        # Deduplicate
+        if table == "emails":
+            cursor.execute("""
+                DELETE FROM emails WHERE id NOT IN (
+                    SELECT MIN(id) FROM emails GROUP BY contact_id, lower(email)
+                )
+            """)
+        else:
+            cursor.execute("""
+                DELETE FROM phones WHERE id NOT IN (
+                    SELECT MIN(id) FROM phones GROUP BY contact_id, phone_number
+                )
+            """)
 
 
 def merge_cluster(
@@ -301,32 +431,13 @@ def merge_cluster(
     if not rows:
         raise ValueError("Contacts not found in database")
 
-    if primary_id:
-        # Find the row corresponding to primary_id
-        primary_row_list = [r for r in rows if r[0] == primary_id]
-        if not primary_row_list:
-            raise ValueError(f"Primary ID {primary_id} not found in contact cluster")
-        primary_row = primary_row_list[0]
-        # Remove primary from candidates to merge FROM
-        other_rows = [r for r in rows if r[0] != primary_id]
-        sorted_rows = [primary_row] + other_rows
-    else:
-        # Auto-select best primary
-        def score_row(row: tuple[Any, ...]) -> int:
-            return sum(1 for field in row if field is not None and field != "")
+    # Select primary and order rows
+    primary_row, sorted_rows, primary_id = _select_primary_row(rows, primary_id)
 
-        sorted_rows = sorted(rows, key=score_row, reverse=True)
-        primary_row = sorted_rows[0]
-        primary_id = primary_row[0]
+    # Merge fields from all contacts
+    merged_data = _merge_contact_fields(primary_row, sorted_rows[1:])
 
-    current_primary = list(primary_row)
-    for other_row in sorted_rows[1:]:
-        for i in range(len(current_primary)):
-            if (current_primary[i] is None or current_primary[i] == "") and other_row[
-                i
-            ]:
-                current_primary[i] = other_row[i]
-
+    # Update primary contact with merged data
     cursor.execute(
         """
         UPDATE contacts
@@ -334,34 +445,20 @@ def merge_cluster(
         WHERE id=?
         """,
         (
-            current_primary[1],
-            current_primary[2],
-            current_primary[3],
-            current_primary[4],
-            current_primary[5],
-            current_primary[6],
+            merged_data[1],
+            merged_data[2],
+            merged_data[3],
+            merged_data[4],
+            merged_data[5],
+            merged_data[6],
             primary_id,
         ),
     )
 
-    for table in ["emails", "phones"]:
-        cursor.execute(
-            f"UPDATE {table} SET contact_id = ? WHERE contact_id IN ({placeholders})",
-            [primary_id] + contact_ids,
-        )
-        if table == "emails":
-            cursor.execute("""
-                DELETE FROM emails WHERE id NOT IN (
-                    SELECT MIN(id) FROM emails GROUP BY contact_id, lower(email)
-                )
-            """)
-        else:
-            cursor.execute("""
-                DELETE FROM phones WHERE id NOT IN (
-                    SELECT MIN(id) FROM phones GROUP BY contact_id, phone_number
-                )
-            """)
+    # Consolidate emails and phones
+    _consolidate_related_records(cursor, primary_id, contact_ids, placeholders)
 
+    # Delete non-primary contacts
     cursor.execute(
         f"DELETE FROM contacts WHERE id IN ({placeholders}) AND id != ?",
         contact_ids + [primary_id],
