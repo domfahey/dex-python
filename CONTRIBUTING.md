@@ -1,6 +1,6 @@
-# Contributing to Dex Import
+# Contributing to Dex Python
 
-Thank you for your interest in contributing to Dex Import! We welcome contributions from the community to help improve this project.
+Thank you for your interest in contributing to Dex Python! We welcome contributions from the community to help improve this project.
 
 ## Getting Started
 

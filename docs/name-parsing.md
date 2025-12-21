@@ -1,12 +1,12 @@
 # Name Parsing (probablepeople)
 
-This guide explains how Dex Import parses contact names with
+This guide explains how Dex Python parses contact names with
 [`probablepeople`](https://github.com/datamade/probablepeople) and stores the
 results in SQLite.
 
 ## Overview
 
-During sync, Dex Import uses probablepeople to extract structured name
+During sync, Dex Python uses probablepeople to extract structured name
 components (given, middle, surname, prefix, suffix, nickname). Parsed data is
 stored alongside the raw contact data so you can normalize names or improve
 deduplication safely.

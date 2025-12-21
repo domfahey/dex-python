@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you through installing Dex Import, configuring API access,
+This guide walks you through installing Dex Python, configuring API access,
 and making a first request.
 
 ## Prerequisites

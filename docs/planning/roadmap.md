@@ -1,6 +1,6 @@
 # Roadmap
 
-This document captures potential improvements for the Dex Import client and
+This document captures potential improvements for the Dex Python client and
 local deduplication workflow. Items are grouped by priority and scope.
 
 ## Goals

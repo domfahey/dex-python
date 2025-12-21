@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-**Project:** Dex Import & Deduplication Engine  
+**Project:** Dex Python & Deduplication Engine  
 **Version:** 0.1.0  
 **Status:** Active Development
 
@@ -8,7 +8,7 @@
 
 ## 1. System Overview
 
-The **Dex Import Client** is a robust, local-first CLI application designed to synchronize personal CRM data from [GetDex.com](https://getdex.com), ensure data sovereignty via local storage, and perform advanced contact deduplication.
+The **Dex Python Client** is a robust, local-first CLI application designed to synchronize personal CRM data from [GetDex.com](https://getdex.com), ensure data sovereignty via local storage, and perform advanced contact deduplication.
 
 It functions as a bridge between the cloud-based Dex API and a local SQLite data warehouse, enabling advanced data hygiene operations that are not natively supported by the Dex UI.
 
@@ -16,7 +16,7 @@ It functions as a bridge between the cloud-based Dex API and a local SQLite data
 
 ```mermaid
 graph LR
-    User[User] -- "Interacts via CLI" --> CLI[Dex Import Tool]
+    User[User] -- "Interacts via CLI" --> CLI[Dex Python Tool]
     CLI -- "Fetches Data (Async)" --> DexAPI[Dex Cloud API]
     CLI -- "Reads/Writes" --> LocalDB[(Local SQLite DB)]
     CLI -- "Analyzes" --> Dedupe[Deduplication Engine]
