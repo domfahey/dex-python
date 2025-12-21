@@ -4,6 +4,7 @@ import os
 import sqlite3
 import urllib.parse
 import webbrowser
+from collections import Counter
 from pathlib import Path
 
 from rich.console import Console
@@ -121,9 +122,23 @@ def main() -> None:
 
             console.print(table)
 
-            # Build search term from first contact's name
-            first_contact = contacts[0]
-            search_name = f"{first_contact[1] or ''} {first_contact[2] or ''}".strip()
+            # Build smart search term - use last name to catch all variations
+            # Collect all name parts to find the best search term
+            all_name_parts: list[str] = []
+            for c in contacts:
+                if c[1]:  # first_name
+                    all_name_parts.append(c[1].strip().lower())
+                if c[2]:  # last_name
+                    all_name_parts.append(c[2].strip().lower())
+
+            # Find most common name part (likely the shared last name)
+            name_counts = Counter(all_name_parts)
+            if name_counts:
+                # Use the most common name part as search term
+                search_term = name_counts.most_common(1)[0][0]
+            else:
+                # Fallback to first contact's last name
+                search_term = (contacts[0][2] or contacts[0][1] or "").strip()
 
             # Prompt loop - allows reopening URL without advancing
             while True:
@@ -131,7 +146,7 @@ def main() -> None:
                 choice = Prompt.ask(
                     "\n[bold]Actions:[/bold]\n"
                     "  [cyan][1-N][/cyan] Label this ID as PRIMARY (Confirm Duplicates)\n"
-                    "  [blue][o][/blue]   Open in Dex (search for this contact)\n"
+                    f"  [blue][o][/blue]   Open in Dex (search: '{search_term}')\n"
                     "  [yellow][s][/yellow]   Mark as NOT Duplicates (False Positive)\n"
                     "  [red][q][/red]   Quit\n"
                     "Select",
@@ -141,8 +156,8 @@ def main() -> None:
 
                 if choice == "o":
                     # Open Dex search in browser
-                    encoded_name = urllib.parse.quote(search_name)
-                    url = f"{DEX_SEARCH_URL}{encoded_name}"
+                    encoded_term = urllib.parse.quote(search_term)
+                    url = f"{DEX_SEARCH_URL}{encoded_term}"
                     webbrowser.open(url)
                     console.print(f"[blue]↗ Opened: {url}[/blue]")
                     continue  # Stay on same group
