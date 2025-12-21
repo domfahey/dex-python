@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### OpenRefine-Inspired Deduplication
+- `fingerprint.py` module with OpenRefine-style keying functions
+  - `fingerprint()` - Normalize, sort tokens, remove punctuation, unicode→ASCII
+  - `ngram_fingerprint()` - N-gram fingerprints for typo detection
+  - `normalize_phone()` - Strip formatting, extract digits only
+  - `normalized_levenshtein()` - Edit distance as 0.0-1.0 score
+  - `ensemble_similarity()` - Weighted Jaro-Winkler + Levenshtein
+- Level 1.5b: Fingerprint name matching
+  - Catches reordered names: "Tom Cruise" ↔ "Cruise, Tom"
+  - Normalizes unicode: "José García" ↔ "Jose Garcia"
+  - Removes punctuation: "O'Brien" ↔ "OBrien"
+- Phone normalization in duplicate detection
+  - "(555) 123-4567" now matches "555-123-4567"
+- 44 new unit tests for fingerprinting (TDD approach)
+
+### Changed
+- `find_phone_duplicates()` now normalizes phone formats before matching
+- `analyze_duplicates.py` includes Level 1.5b fingerprint analysis in reports
+
+### Dependencies
+- Added `unidecode>=1.3.0` for unicode→ASCII normalization
+
+### Documentation
+- Comprehensive docstrings added to all source modules
+
 ## [0.2.0] - 2025-12-21
 
 Major release with package rename, deduplication engine, and project reorganization.
