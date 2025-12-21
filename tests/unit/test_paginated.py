@@ -2,8 +2,8 @@
 
 from pytest_httpx import HTTPXMock
 
-from src.dex_import import DexClient, Settings
-from src.dex_import.models import PaginatedContacts, PaginatedNotes, PaginatedReminders
+from dex_python import DexClient, Settings
+from dex_python.models import PaginatedContacts, PaginatedNotes, PaginatedReminders
 
 
 class TestPaginatedContacts:

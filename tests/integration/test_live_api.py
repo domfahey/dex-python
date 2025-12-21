@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 
-from src.dex_import import ContactCreate, DexClient
+from dex_python import ContactCreate, DexClient
 
 pytestmark = [
     pytest.mark.integration,

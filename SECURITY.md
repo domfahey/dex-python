@@ -1,50 +1,98 @@
-# Security Guidelines
+# Security Policy
 
-## API Keys
+## Supported Versions
 
-- **Never commit API keys** to version control
-- Store `DEX_API_KEY` in `.env` file (gitignored)
-- Use `.env.example` as a template with placeholder values
+| Version | Supported          |
+| ------- | ------------------ |
+| 0.1.x   | :white_check_mark: |
 
-## Personal Data Protection
+## Reporting a Vulnerability
 
-This project syncs contact data from Dex CRM. To protect privacy:
+**Please do not report security vulnerabilities through public GitHub issues.**
 
-- **All artifacts go to `output/`** directory (gitignored)
-- **Database files** (`*.db`, `*.sqlite`) are gitignored
-- **Data exports** (`*.json`, `*.csv`) are gitignored
-- **Reports with PII** (`*_REPORT.md`) are gitignored
-- Never commit files containing real names, emails, or phone numbers
+If you believe you have found a security vulnerability in this project:
 
-## Pre-commit Hooks (Enforced)
+1. **Email:** Contact the project maintainer directly
+2. **Include:** Description, steps to reproduce, and potential impact
+3. **Response:** Expect acknowledgment within 48 hours
 
-This repo uses pre-commit hooks for automated secret scanning:
+We follow responsible disclosure principles and will:
+- Acknowledge receipt of your report
+- Provide an estimated timeline for a fix
+- Notify you when the vulnerability is resolved
+- Credit you in the release notes (unless you prefer anonymity)
 
-```bash
-# Install pre-commit
-pip install pre-commit  # or: brew install pre-commit
+## Security Audit
 
-# Install hooks (runs gitleaks on every commit)
-pre-commit install
+This repository underwent a security audit before public release. See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for details.
 
-# Run manually on all files
-pre-commit run --all-files
+**Audit Status:** ✅ Passed (2024-12-21)
+
+## Best Practices for Contributors
+
+### Secret Management
+
+- **Never commit API keys, tokens, or passwords**
+- Use `.env` files for local development (template: `.env.example`)
+- The `.gitignore` excludes sensitive files - do not force-add them
+- Use environment variables: `os.getenv("DEX_API_KEY")`
+
+### Data Privacy
+
+This tool processes personal contact information (PII):
+
+- **Database files (`*.db`, `*.sqlite`)** - Gitignored, never commit
+- **Report files (`*_REPORT.md`)** - Gitignored, may contain names/emails
+- **Export files (`*.json`, `*.csv`)** - Gitignored, contain contact data
+- Use `Faker` library for test data, never real contacts
+
+### Dependency Management
+
+- We use `uv` for dependency management
+- Run `uv sync` to install pinned versions
+- Regularly audit with `pip-audit` or `safety`
+
+### Testing
+
+- Integration tests run against the live Dex API
+- Use a test account when possible
+- Never record real API keys in test fixtures
+- Use `pytest -m "not integration"` to skip live tests
+
+## Security Controls
+
+### What We Protect
+
+| Data Type | Protection |
+|-----------|------------|
+| API Keys | Environment variables only |
+| Contact Data | Local database, gitignored |
+| Reports | Generated locally, gitignored |
+| Test Data | Faker-generated synthetic data |
+
+### Gitignore Coverage
+
+```
+.env              # Real secrets
+*.db, *.sqlite    # Databases with PII
+*.json, *.csv     # Data exports
+output/*          # Reports directory
+*_REPORT.md       # Analysis reports
 ```
 
-The `.pre-commit-config.yaml` includes:
-- **gitleaks** - Scans for secrets, API keys, credentials
-- **ruff** - Linting and formatting
-- **standard hooks** - Trailing whitespace, YAML validation
+## Automated Security
 
-## If You Accidentally Commit Secrets
+Consider enabling:
 
-1. **Rotate the exposed key immediately**
-2. Remove from history using BFG Repo-Cleaner:
-   ```bash
-   bfg --delete-files .env
-   git push --force
-   ```
+- **GitHub Secret Scanning** - Alerts for exposed secrets
+- **Dependabot** - Dependency vulnerability alerts
+- **Pre-commit hooks** - Local secret detection
 
-## Reporting Security Issues
-
-Contact domfahey@gmail.com for security concerns.
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+```

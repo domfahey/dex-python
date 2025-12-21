@@ -38,7 +38,8 @@ matching. Items in Future Enhancements are not implemented yet.
 - Merge clusters in SQLite; emails/phones are de-duplicated by value.
 
 ## 5. Workflow
-1. Sync contacts to SQLite (`main.py` or `sync_with_integrity.py`).
+1. Sync contacts to SQLite (`main.py` or `sync_with_integrity.py`) in the
+   `output/` directory by default (override with `DEX_DATA_DIR`).
 2. Generate a report (`analyze_duplicates.py`).
 3. Flag candidate groups (`flag_duplicates.py`).
 4. Review and choose primaries (`review_duplicates.py`).

@@ -1,6 +1,6 @@
 """Tests for custom exceptions."""
 
-from src.dex_import.exceptions import (
+from dex_python.exceptions import (
     AuthenticationError,
     ContactNotFoundError,
     DexAPIError,

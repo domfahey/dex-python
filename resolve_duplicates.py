@@ -1,9 +1,10 @@
 """Script to resolve duplicates in the local database by merging them."""
 
+import os
 import sqlite3
 from pathlib import Path
 
-from src.dex_import.deduplication import (
+from dex_python.deduplication import (
     cluster_duplicates,
     find_email_duplicates,
     find_fuzzy_name_duplicates,
@@ -12,8 +13,11 @@ from src.dex_import.deduplication import (
     merge_cluster,
 )
 
+DATA_DIR = Path(os.getenv("DEX_DATA_DIR", "output"))
+DEFAULT_DB_PATH = DATA_DIR / "dex_contacts.db"
 
-def main(db_path: str = "output/dex_contacts.db") -> None:
+
+def main(db_path: str = str(DEFAULT_DB_PATH)) -> None:
     if not Path(db_path).exists():
         print(f"Error: Database {db_path} not found.")
         return

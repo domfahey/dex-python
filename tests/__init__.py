@@ -1,1 +1,1 @@
-"""Test package for dex_import."""
+"""Test package for dex_python."""

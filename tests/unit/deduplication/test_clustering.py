@@ -1,6 +1,6 @@
 """Tests for clustering duplicate contacts into entities."""
 
-from src.dex_import.deduplication import cluster_duplicates
+from dex_python.deduplication import cluster_duplicates
 
 
 def test_cluster_duplicates_basic() -> None:

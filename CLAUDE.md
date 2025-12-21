@@ -31,13 +31,15 @@ uv run python review_duplicates.py
 uv run python resolve_duplicates.py
 ```
 
+Artifacts are written to `output/` by default (override with `DEX_DATA_DIR`).
+
 ## Architecture
 
 Dex CRM API client using httpx and pydantic.
 
-- `src/dex_import/config.py` - Settings loaded from `.env` (requires `DEX_API_KEY`)
-- `src/dex_import/client.py` - `DexClient` class with context manager support
-- `src/dex_import/deduplication.py` - Duplicate detection and merging utilities
+- `src/dex_python/config.py` - Settings loaded from `.env` (requires `DEX_API_KEY`)
+- `src/dex_python/client.py` - `DexClient` class with context manager support
+- `src/dex_python/deduplication.py` - Duplicate detection and merging utilities
 - `tests/unit/test_clients.py` - Unit tests with pytest-httpx mocking
 - `tests/integration/test_live_api.py` - Integration tests against live API
 

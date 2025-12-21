@@ -6,6 +6,8 @@ See official docs: [Contacts](https://getdex.com/docs/api-reference/contacts) |
 [Reminders](https://getdex.com/docs/api-reference/reminders) |
 [Notes](https://getdex.com/docs/api-reference/notes)
 
+Official site: https://getdex.com/
+
 ## DexClient
 
 Python client for the Dex CRM API.
@@ -13,7 +15,7 @@ Python client for the Dex CRM API.
 ### Initialization
 
 ```python
-from src.dex_import import DexClient, Settings
+from dex_python import DexClient, Settings
 
 # Auto-load from .env
 client = DexClient()
@@ -55,7 +57,7 @@ Common exceptions you may want to handle:
 ```python
 import time
 
-from src.dex_import import DexClient, DexAPIError, RateLimitError
+from dex_python import DexClient, DexAPIError, RateLimitError
 
 try:
     with DexClient(max_retries=2, retry_delay=0.5) as client:
@@ -89,7 +91,7 @@ Async versions (`AsyncDexClient`) expose the same `*_paginated` methods.
 Async client with the same API as `DexClient`.
 
 ```python
-from src.dex_import import AsyncDexClient, Settings
+from dex_python import AsyncDexClient, Settings
 
 settings = Settings(dex_api_key="your-key")
 
@@ -139,7 +141,7 @@ contact = client.get_contact_by_email("john@example.com")
 Create a new contact.
 
 ```python
-from src.dex_import import ContactCreate
+from dex_python import ContactCreate
 
 contact = ContactCreate(first_name="John", last_name="Doe")
 result = client.create_contact(contact)
@@ -157,7 +159,7 @@ contact = ContactCreate.with_email(
 Update an existing contact.
 
 ```python
-from src.dex_import import ContactUpdate
+from dex_python import ContactUpdate
 
 update = ContactUpdate(
     contact_id="123-456",
@@ -200,7 +202,7 @@ print(page.total, page.has_more)
 Create a new reminder.
 
 ```python
-from src.dex_import import ReminderCreate
+from dex_python import ReminderCreate
 
 reminder = ReminderCreate(text="Follow up with client")
 result = client.create_reminder(reminder)
@@ -218,7 +220,7 @@ reminder = ReminderCreate.with_contacts(
 Update an existing reminder.
 
 ```python
-from src.dex_import import ReminderUpdate
+from dex_python import ReminderUpdate
 
 update = ReminderUpdate(
     reminder_id="123-456",
@@ -273,7 +275,7 @@ notes = client.get_notes_by_contact("contact-123")
 Create a new note.
 
 ```python
-from src.dex_import import NoteCreate
+from dex_python import NoteCreate
 
 note = NoteCreate(note="Meeting notes here")
 result = client.create_note(note)
@@ -291,7 +293,7 @@ note = NoteCreate.with_contacts(
 Update an existing note.
 
 ```python
-from src.dex_import import NoteUpdate
+from dex_python import NoteUpdate
 
 update = NoteUpdate(
     note_id="note-123",

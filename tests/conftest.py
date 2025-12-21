@@ -4,7 +4,7 @@ from typing import Literal
 
 import pytest
 
-from src.dex_import import Settings
+from dex_python import Settings
 
 ClientKind = Literal["sync", "async"]
 

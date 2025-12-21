@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from src.dex_import.deduplication import (
+from dex_python.deduplication import (
     find_birthday_name_duplicates,
     find_email_duplicates,
     find_fuzzy_name_duplicates,
@@ -74,7 +74,13 @@ def generate_report(db_path: str, output_path: str) -> None:
 
     # Calculate total unique contacts involved
     all_dupe_ids = set()
-    all_dupes = [email_dupes, phone_dupes, birthday_dupes, name_title_dupes, fuzzy_dupes]
+    all_dupes = [
+        email_dupes,
+        phone_dupes,
+        birthday_dupes,
+        name_title_dupes,
+        fuzzy_dupes,
+    ]
     for dupes in all_dupes:
         for group in dupes:
             all_dupe_ids.update(group["contact_ids"])

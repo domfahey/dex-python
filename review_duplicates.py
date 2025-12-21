@@ -1,6 +1,8 @@
 """Interactive CLI tool to review and label duplicate contacts."""
 
+import os
 import sqlite3
+from pathlib import Path
 
 from rich.console import Console
 from rich.prompt import Prompt
@@ -21,7 +23,11 @@ def setup_db(cursor: sqlite3.Cursor) -> None:
 
 
 def main() -> None:
-    db_path = "output/dex_contacts.db"
+    data_dir = Path(os.getenv("DEX_DATA_DIR", "output"))
+    db_path = data_dir / "dex_contacts.db"
+    if not db_path.exists():
+        print(f"Error: Database {db_path} not found.")
+        return
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 

@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from src.dex_import.deduplication import (
+from dex_python.deduplication import (
     find_email_duplicates,
     find_fuzzy_name_duplicates,
     find_phone_duplicates,

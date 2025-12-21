@@ -8,9 +8,11 @@ import json
 import os
 import sqlite3
 import sys
+from pathlib import Path
 from typing import Any
 
-from src.dex_import import DexClient
+from dex_python import DexClient
+from dex_python.name_parsing import parse_contact_name
 
 
 def init_db(cursor: sqlite3.Cursor) -> None:
@@ -26,6 +28,14 @@ def init_db(cursor: sqlite3.Cursor) -> None:
             id TEXT PRIMARY KEY,
             first_name TEXT,
             last_name TEXT,
+            name_parse_type TEXT,
+            name_parsed JSON,
+            name_given TEXT,
+            name_middle TEXT,
+            name_surname TEXT,
+            name_prefix TEXT,
+            name_suffix TEXT,
+            name_nickname TEXT,
             job_title TEXT,
             linkedin TEXT,
             website TEXT,
@@ -60,16 +70,27 @@ def insert_contact_data(cursor: sqlite3.Cursor, contact: dict[str, Any]) -> None
     c_id = contact.get("id")
 
     # Insert main contact
+    name_fields = parse_contact_name(contact)
     cursor.execute(
         """
         INSERT INTO contacts (
-            id, first_name, last_name, job_title, linkedin, website, full_data
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, first_name, last_name, name_parse_type, name_parsed, name_given,
+            name_middle, name_surname, name_prefix, name_suffix, name_nickname,
+            job_title, linkedin, website, full_data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             c_id,
             contact.get("first_name"),
             contact.get("last_name"),
+            name_fields["name_parse_type"],
+            name_fields["name_parsed"],
+            name_fields["name_given"],
+            name_fields["name_middle"],
+            name_fields["name_surname"],
+            name_fields["name_prefix"],
+            name_fields["name_suffix"],
+            name_fields["name_nickname"],
             contact.get("job_title"),
             contact.get("linkedin"),
             contact.get("website"),
@@ -99,11 +120,12 @@ def insert_contact_data(cursor: sqlite3.Cursor, contact: dict[str, Any]) -> None
 
 def main() -> None:
     """Fetch all contacts and save to database."""
-    os.makedirs("output", exist_ok=True)
-    db_path = "output/dex_contacts.db"
+    data_dir = Path(os.getenv("DEX_DATA_DIR", "output"))
+    data_dir.mkdir(parents=True, exist_ok=True)
+    db_path = data_dir / "dex_contacts.db"
 
     # Warn about destructive operation
-    if os.path.exists(db_path):
+    if db_path.exists():
         print("WARNING: This will DROP all tables and lose dedup metadata!")
         print("For incremental sync, use: uv run python sync_with_integrity.py")
         if "--force" not in sys.argv:

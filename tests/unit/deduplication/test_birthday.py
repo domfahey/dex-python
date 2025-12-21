@@ -6,7 +6,7 @@ from typing import Generator
 
 import pytest
 
-from src.dex_import.deduplication import find_birthday_name_duplicates
+from dex_python.deduplication import find_birthday_name_duplicates
 
 
 @pytest.fixture
@@ -41,7 +41,8 @@ def insert_contact(
     """Helper to insert a contact with optional birthday."""
     full_data = {"birthday": birthday} if birthday else {}
     cursor.execute(
-        "INSERT INTO contacts (id, first_name, last_name, full_data) VALUES (?, ?, ?, ?)",
+        """INSERT INTO contacts (id, first_name, last_name, full_data)
+        VALUES (?, ?, ?, ?)""",
         (contact_id, first_name, last_name, json.dumps(full_data)),
     )
 
@@ -53,7 +54,8 @@ class TestBirthdayNameDuplicates:
         """Two contacts with same name and birthday should be flagged."""
         cursor = db_connection.cursor()
         insert_contact(cursor, "c1", "Melissa", "Conklin", "2022-02-28")
-        insert_contact(cursor, "c2", "Melissa", "Conklin", "2023-02-28")  # Same month-day
+        # Same month-day (02-28), different year
+        insert_contact(cursor, "c2", "Melissa", "Conklin", "2023-02-28")
         db_connection.commit()
 
         results = find_birthday_name_duplicates(db_connection)
@@ -88,9 +90,7 @@ class TestBirthdayNameDuplicates:
 
         assert len(results) == 0
 
-    def test_excludes_placeholder_date(
-        self, db_connection: sqlite3.Connection
-    ) -> None:
+    def test_excludes_placeholder_date(self, db_connection: sqlite3.Connection) -> None:
         """Placeholder date 2001-01-01 should be excluded."""
         cursor = db_connection.cursor()
         insert_contact(cursor, "c1", "John", "Doe", "2001-01-01")

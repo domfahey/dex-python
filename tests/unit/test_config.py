@@ -1,6 +1,6 @@
 """Tests for Settings configuration."""
 
-from src.dex_import import Settings
+from dex_python import Settings
 
 
 def test_settings_loads_from_env(monkeypatch) -> None:

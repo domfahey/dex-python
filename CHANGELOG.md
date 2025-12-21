@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Deduplication engine with level 1/2/3 matching, clustering, and merge utilities (`src/dex_import/deduplication.py`) (8ddba4c)
+- Deduplication engine with level 1/2/3 matching, clustering, and merge utilities (`src/dex_python/deduplication.py`) (8ddba4c)
 - Scripts for duplicate analysis, flagging, review, and resolution (`analyze_duplicates.py`, `flag_duplicates.py`, `review_duplicates.py`, `resolve_duplicates.py`)
 - Async sync tool with integrity hashing, incremental updates, and progress output (`sync_with_integrity.py`)
 - Deduplication plan documentation (`DEDUPLICATION_PLAN.md`)
@@ -101,5 +101,5 @@ Initial release implementing the [Dex CRM API](https://getdex.com/docs/api-refer
 - Added `.claude/settings.local.json` to `.gitignore`
 - Removed local settings from git tracking
 
-[unreleased]: https://github.com/domfahey/dex-import/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/domfahey/dex-import/releases/tag/v0.1.0
+[unreleased]: https://github.com/domfahey/dex-python/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/domfahey/dex-python/releases/tag/v0.1.0

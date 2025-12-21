@@ -1,53 +1,55 @@
-# Contributing to dex-import
+# Contributing to Dex Import
 
-Thank you for your interest in contributing!
+Thank you for your interest in contributing to Dex Import! We welcome contributions from the community to help improve this project.
 
-## Development Setup
+## Getting Started
 
-```bash
-# Clone the repo
-git clone https://github.com/domfahey/dex-import.git
-cd dex-import
+1.  **Fork the repository** on GitHub.
+2.  **Clone your fork** locally:
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/dex-python.git
+    cd dex-python
+    ```
+3.  **Install dependencies** using `uv` and `make`:
+    ```bash
+    make install
+    ```
+4.  **Verify your environment**:
+    ```bash
+    make doctor
+    ```
 
-# Create virtual environment and install dependencies
-uv venv
-uv sync --all-extras --dev
+## Development Workflow
 
-# Run tests
-uv run pytest
-
-# Run linting
-uv run ruff check .
-uv run ruff format .
-```
-
-## Code Standards
-
-- Use `ruff` for linting and formatting
-- Use `mypy --strict` for type checking
-- Follow PEP 8 style guidelines
-- Write tests for new features (TDD preferred)
-- Keep functions focused and well-documented
+1.  Create a new branch for your feature or bugfix:
+    ```bash
+    git checkout -b feature/my-new-feature
+    ```
+2.  Make your changes.
+3.  **Run tests and checks** frequently:
+    ```bash
+    make check
+    ```
+    This runs formatting, linting, type checking, and unit tests. Ensure everything passes before committing.
 
 ## Pull Request Process
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Make your changes with tests
-4. Run `make check` to ensure all checks pass
-5. Commit with clear messages following conventional commits
-6. Push and open a Pull Request
+1.  Push your branch to your fork.
+2.  Open a Pull Request (PR) against the `main` branch of the original repository.
+3.  Provide a clear description of your changes, referencing any related issues.
+4.  Ensure all CI checks pass.
 
-## Commit Message Format
+## Coding Standards
 
-```
-type: short description
+*   **Style:** We use `ruff` for linting and formatting. Run `make format` to auto-fix issues.
+*   **Types:** We use `mypy` for static type checking. All code must be strictly typed.
+*   **Tests:** We use `pytest`. New features should include unit tests. Integration tests are encouraged but require a live API key.
 
-Longer description if needed.
-```
+## Reporting Issues
 
-Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`
+If you find a bug or have a feature request, please open an issue on GitHub. include:
+*   Steps to reproduce.
+*   Expected vs. actual behavior.
+*   Environment details (OS, Python version).
 
-## Questions?
-
-Open an issue or contact Dominic Fahey at domfahey@gmail.com.
+Thank you for contributing!

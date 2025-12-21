@@ -8,8 +8,8 @@ from typing import AsyncIterator, Literal
 
 from pytest_httpx import HTTPXMock
 
-from src.dex_import import DexClient, Settings
-from src.dex_import.async_client import AsyncDexClient
+from dex_python import DexClient, Settings
+from dex_python.async_client import AsyncDexClient
 
 ClientKind = Literal["sync", "async"]
 

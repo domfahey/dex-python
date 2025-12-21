@@ -2,8 +2,8 @@
 
 from pytest_httpx import HTTPXMock
 
-from src.dex_import import DexClient, Settings
-from src.dex_import.models import ContactCreate, NoteCreate, ReminderCreate
+from dex_python import DexClient, Settings
+from dex_python.models import ContactCreate, NoteCreate, ReminderCreate
 
 
 class TestNormalizedContactReturns:
@@ -35,7 +35,7 @@ class TestNormalizedContactReturns:
         self, settings: Settings, httpx_mock: HTTPXMock
     ) -> None:
         """Test that update_contact returns the updated entity."""
-        from src.dex_import.models import ContactUpdate
+        from dex_python.models import ContactUpdate
 
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/contacts/c-123",

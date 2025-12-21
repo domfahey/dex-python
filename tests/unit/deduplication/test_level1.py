@@ -5,7 +5,7 @@ from typing import Generator
 
 import pytest
 
-from src.dex_import.deduplication import find_email_duplicates, find_phone_duplicates
+from dex_python.deduplication import find_email_duplicates, find_phone_duplicates
 
 
 @pytest.fixture

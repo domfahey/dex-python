@@ -3,9 +3,9 @@
 import pytest
 from pytest_httpx import HTTPXMock
 
-from src.dex_import import Settings
-from src.dex_import.async_client import AsyncDexClient
-from src.dex_import.exceptions import AuthenticationError, DexAPIError
+from dex_python import Settings
+from dex_python.async_client import AsyncDexClient
+from dex_python.exceptions import AuthenticationError, DexAPIError
 
 
 class TestAsyncRetryLogic:

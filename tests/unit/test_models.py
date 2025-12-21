@@ -1,6 +1,6 @@
 """Tests for Dex API models."""
 
-from src.dex_import.models import (
+from dex_python.models import (
     ContactCreate,
     NoteCreate,
     NoteUpdate,

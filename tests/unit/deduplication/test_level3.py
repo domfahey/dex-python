@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from src.dex_import.deduplication import find_fuzzy_name_duplicates
+from dex_python.deduplication import find_fuzzy_name_duplicates
 
 
 @pytest.fixture

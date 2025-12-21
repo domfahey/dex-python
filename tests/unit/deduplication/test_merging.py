@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from src.dex_import.deduplication import merge_cluster
+from dex_python.deduplication import merge_cluster
 
 
 @pytest.fixture

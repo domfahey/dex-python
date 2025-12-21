@@ -3,8 +3,8 @@
 import pytest
 from pytest_httpx import HTTPXMock
 
-from src.dex_import import DexClient, Settings
-from src.dex_import.exceptions import DexAPIError
+from dex_python import DexClient, Settings
+from dex_python.exceptions import DexAPIError
 
 
 def capture_sleep(monkeypatch: pytest.MonkeyPatch) -> list[float]:
@@ -13,7 +13,7 @@ def capture_sleep(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     def fake_sleep(delay: float) -> None:
         delays.append(delay)
 
-    monkeypatch.setattr("src.dex_import.client.time.sleep", fake_sleep)
+    monkeypatch.setattr("dex_python.client.time.sleep", fake_sleep)
     return delays
 
 
@@ -120,8 +120,8 @@ class TestRetryLogic:
             json={"error": "Bad request"},
         )
 
-        from src.dex_import import ContactCreate
-        from src.dex_import.exceptions import ValidationError
+        from dex_python import ContactCreate
+        from dex_python.exceptions import ValidationError
 
         with pytest.raises(ValidationError):
             with DexClient(settings, max_retries=3, retry_delay=0.01) as client:
@@ -141,7 +141,7 @@ class TestRetryLogic:
             json={"error": "Unauthorized"},
         )
 
-        from src.dex_import.exceptions import AuthenticationError
+        from dex_python.exceptions import AuthenticationError
 
         with pytest.raises(AuthenticationError):
             with DexClient(settings, max_retries=3, retry_delay=0.01) as client:

@@ -1,4 +1,4 @@
-.PHONY: install test test-unit test-integration lint format type check sync doctor clean
+.PHONY: install test test-unit test-integration lint format type check sync sync-back-notes sync-back-desc sync-back-title sync-back-preview doctor clean
 
 install:
 	uv venv && uv sync --all-extras --dev
@@ -26,6 +26,19 @@ check: format lint type test
 
 sync:
 	uv run python sync_with_integrity.py
+
+sync-back-preview:
+	@echo "Choose a mode to preview: make sync-back-preview MODE=notes|description|job_title"
+	uv run python sync_enrichment_back.py --mode $(MODE) --dry-run
+
+sync-back-notes:
+	uv run python sync_enrichment_back.py --mode notes
+
+sync-back-desc:
+	uv run python sync_enrichment_back.py --mode description
+
+sync-back-title:
+	uv run python sync_enrichment_back.py --mode job_title
 
 doctor:
 	@uv --version

@@ -7,7 +7,7 @@ import json
 import pytest
 from pytest_httpx import HTTPXMock
 
-from src.dex_import import (
+from dex_python import (
     ContactCreate,
     ContactUpdate,
     DexClient,
@@ -15,8 +15,8 @@ from src.dex_import import (
     ReminderUpdate,
     Settings,
 )
-from src.dex_import.async_client import AsyncDexClient
-from src.dex_import.exceptions import (
+from dex_python.async_client import AsyncDexClient
+from dex_python.exceptions import (
     AuthenticationError,
     ContactNotFoundError,
     DexAPIError,
