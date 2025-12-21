@@ -1,123 +1,139 @@
 # Dex Python SDK Makefile
 # https://github.com/domfahey/dex-python
 
+SHELL := /bin/bash
 .DEFAULT_GOAL := help
+.SHELLFLAGS := -eu -o pipefail -c
+
+# Variables
+UV := uv
+PYTHON := $(UV) run python
+PYTEST := $(UV) run pytest
+RUFF := $(UV) run ruff
+MYPY := $(UV) run mypy
+
+# Colors
+CYAN := \033[36m
+GREEN := \033[32m
+YELLOW := \033[33m
+RESET := \033[0m
+
+# Declare all phony targets
+.PHONY: install doctor clean format lint type check \
+        test test-unit test-integration test-cov \
+        sync sync-back-preview sync-back-notes sync-back-desc sync-back-title \
+        analyze flag-duplicates review-duplicates resolve-duplicates \
+        help
 
 # =============================================================================
 # DEVELOPMENT
 # =============================================================================
 
-.PHONY: install
 install: ## Set up development environment
-	uv venv && uv sync --all-extras --dev
+	@$(UV) venv
+	@$(UV) sync --all-extras --dev
+	@echo -e "$(GREEN)✓ Environment ready$(RESET)"
 
-.PHONY: doctor
 doctor: ## Verify environment and dependencies
 	@echo "=== Environment Check ==="
-	@uv --version
-	@uv run python -c "import sys; print('python:', sys.version.split()[0])"
-	@uv run python -c "import importlib.util; req=['httpx','pydantic','pydantic_settings','jellyfish','networkx','rich']; missing=[r for r in req if importlib.util.find_spec(r) is None]; print('missing deps:', ', '.join(missing) if missing else 'none')"
-	@uv run python -c "import os; print('DEX_API_KEY:', 'set' if os.getenv('DEX_API_KEY') else 'missing')"
+	@$(UV) --version
+	@$(PYTHON) -c "import sys; print('python:', sys.version.split()[0])"
+	@$(PYTHON) -c "import importlib.util; req=['httpx','pydantic','pydantic_settings','jellyfish','networkx','rich','unidecode']; missing=[r for r in req if importlib.util.find_spec(r) is None]; print('missing deps:', ', '.join(missing) if missing else 'none')"
+	@$(PYTHON) -c "import os; print('DEX_API_KEY:', 'set' if os.getenv('DEX_API_KEY') else 'missing')"
 
-.PHONY: clean
 clean: ## Remove build artifacts and caches
-	rm -rf .pytest_cache .mypy_cache .ruff_cache __pycache__
-	rm -rf src/**/__pycache__ tests/__pycache__ scripts/__pycache__
-	rm -rf *.egg-info build/ dist/
+	@rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@rm -rf *.egg-info build/ dist/ .coverage
+	@echo -e "$(GREEN)✓ Cleaned$(RESET)"
 
 # =============================================================================
 # CODE QUALITY
 # =============================================================================
 
-.PHONY: format
 format: ## Auto-fix code formatting
-	uv run ruff check . --fix
-	uv run ruff format .
+	@$(RUFF) check . --fix --quiet
+	@$(RUFF) format . --quiet
+	@echo -e "$(GREEN)✓ Formatted$(RESET)"
 
-.PHONY: lint
 lint: ## Check code style
-	uv run ruff check .
+	@$(RUFF) check .
 
-.PHONY: type
 type: ## Run type checking
-	uv run mypy src/ --strict
+	@$(MYPY) src/ --strict
 
-.PHONY: check
 check: format lint type test ## Run all checks (format, lint, type, test)
+	@echo -e "$(GREEN)✓ All checks passed$(RESET)"
 
 # =============================================================================
 # TESTING
 # =============================================================================
 
-.PHONY: test
 test: ## Run all tests (excludes integration)
-	uv run pytest -v
+	@$(PYTEST) -v
 
-.PHONY: test-unit
 test-unit: ## Run unit tests only
-	uv run pytest tests/unit -v
+	@$(PYTEST) tests/unit -v
 
-.PHONY: test-integration
 test-integration: ## Run integration tests (requires DEX_API_KEY)
-	@export $$(cat .env | xargs) && uv run pytest tests/integration -m integration -v
+	@set -a && source .env && set +a && $(PYTEST) tests/integration -m integration -v
 
-.PHONY: test-cov
 test-cov: ## Run tests with coverage report
-	uv run pytest --cov=src/dex_python --cov-report=html --cov-report=term
+	@$(PYTEST) --cov=src/dex_python --cov-report=html --cov-report=term
+	@echo -e "$(GREEN)✓ Coverage report: htmlcov/index.html$(RESET)"
 
 # =============================================================================
 # SYNC OPERATIONS
 # =============================================================================
 
-.PHONY: sync
 sync: ## Sync contacts from Dex API to local database
-	uv run python scripts/sync_with_integrity.py
+	@$(PYTHON) scripts/sync_with_integrity.py
 
-.PHONY: sync-back-preview
 sync-back-preview: ## Preview sync-back changes (MODE=notes|description|job_title)
-	@echo "Usage: make sync-back-preview MODE=notes"
-	uv run python scripts/sync_enrichment_back.py --mode $(MODE) --dry-run
+ifndef MODE
+	@echo -e "$(YELLOW)Usage: make sync-back-preview MODE=notes$(RESET)"
+else
+	@$(PYTHON) scripts/sync_enrichment_back.py --mode $(MODE) --dry-run
+endif
 
-.PHONY: sync-back-notes
 sync-back-notes: ## Push enrichments as timeline notes
-	uv run python scripts/sync_enrichment_back.py --mode notes
+	@$(PYTHON) scripts/sync_enrichment_back.py --mode notes
 
-.PHONY: sync-back-desc
 sync-back-desc: ## Push enrichments to description field
-	uv run python scripts/sync_enrichment_back.py --mode description
+	@$(PYTHON) scripts/sync_enrichment_back.py --mode description
 
-.PHONY: sync-back-title
 sync-back-title: ## Push enrichments to job_title field
-	uv run python scripts/sync_enrichment_back.py --mode job_title
+	@$(PYTHON) scripts/sync_enrichment_back.py --mode job_title
 
 # =============================================================================
 # DEDUPLICATION
 # =============================================================================
 
-.PHONY: analyze
 analyze: ## Generate duplicate analysis report
-	uv run python scripts/analyze_duplicates.py
+	@DEX_DATA_DIR=. $(PYTHON) scripts/analyze_duplicates.py
 
-.PHONY: flag-duplicates
 flag-duplicates: ## Flag duplicate candidates in database
-	uv run python scripts/flag_duplicates.py
+	@DEX_DATA_DIR=. $(PYTHON) scripts/flag_duplicates.py
 
-.PHONY: resolve-duplicates
+review-duplicates: ## Interactively review duplicate candidates
+	@DEX_DATA_DIR=. $(PYTHON) scripts/review_duplicates.py
+
 resolve-duplicates: ## Merge confirmed duplicates (destructive)
-	uv run python scripts/resolve_duplicates.py
+	@DEX_DATA_DIR=. $(PYTHON) scripts/resolve_duplicates.py
 
 # =============================================================================
 # HELP
 # =============================================================================
 
-.PHONY: help
 help: ## Show this help message
-	@echo "Dex Python SDK - Available Commands"
+	@echo -e "$(CYAN)Dex Python SDK$(RESET) - Available Commands"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-22s$(RESET) %s\n", $$1, $$2}'
 	@echo ""
 	@echo "Examples:"
-	@echo "  make install          # Set up development environment"
-	@echo "  make check            # Run all quality checks"
-	@echo "  make sync             # Sync contacts from Dex API"
-	@echo "  make analyze          # Analyze duplicates"
+	@echo "  make install              # Set up development environment"
+	@echo "  make check                # Run all quality checks"
+	@echo "  make sync                 # Sync contacts from Dex API"
+	@echo "  make analyze              # Analyze duplicates"
+	@echo "  make review-duplicates    # Review duplicates interactively"
