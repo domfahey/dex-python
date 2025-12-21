@@ -1,4 +1,4 @@
-.PHONY: install test test-unit test-integration lint format type check sync sync-back-notes sync-back-desc sync-back-title sync-back-preview doctor clean
+.PHONY: install test test-unit test-integration lint format type check sync sync-back-notes sync-back-desc sync-back-title sync-back-preview analyze flag-duplicates resolve-duplicates doctor clean
 
 install:
 	uv venv && uv sync --all-extras --dev
@@ -25,20 +25,29 @@ type:
 check: format lint type test
 
 sync:
-	uv run python sync_with_integrity.py
+	uv run python scripts/sync_with_integrity.py
 
 sync-back-preview:
 	@echo "Choose a mode to preview: make sync-back-preview MODE=notes|description|job_title"
-	uv run python sync_enrichment_back.py --mode $(MODE) --dry-run
+	uv run python scripts/sync_enrichment_back.py --mode $(MODE) --dry-run
 
 sync-back-notes:
-	uv run python sync_enrichment_back.py --mode notes
+	uv run python scripts/sync_enrichment_back.py --mode notes
 
 sync-back-desc:
-	uv run python sync_enrichment_back.py --mode description
+	uv run python scripts/sync_enrichment_back.py --mode description
 
 sync-back-title:
-	uv run python sync_enrichment_back.py --mode job_title
+	uv run python scripts/sync_enrichment_back.py --mode job_title
+
+analyze:
+	uv run python scripts/analyze_duplicates.py
+
+flag-duplicates:
+	uv run python scripts/flag_duplicates.py
+
+resolve-duplicates:
+	uv run python scripts/resolve_duplicates.py
 
 doctor:
 	@uv --version

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Birthday-based duplicate detection (Level 1.5) (995e5b2)
+- Name parsing module for standardized contact name handling (`src/dex_python/name_parsing.py`)
+- Job title enrichment with company/role extraction (`src/dex_python/enrichment.py`)
+- Sync-back functionality to push enrichments to Dex API (`src/dex_python/sync_back.py`)
+- GitHub issue and PR templates (`.github/`)
 - Deduplication engine with level 1/2/3 matching, clustering, and merge utilities (`src/dex_python/deduplication.py`) (8ddba4c)
 - Scripts for duplicate analysis, flagging, review, and resolution (`analyze_duplicates.py`, `flag_duplicates.py`, `review_duplicates.py`, `resolve_duplicates.py`)
 - Async sync tool with integrity hashing, incremental updates, and progress output (`sync_with_integrity.py`)
@@ -32,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Line length violations in main.py and tests (1d3406a)
 
 ### Changed
+- **BREAKING**: Package renamed from `dex_import` to `dex_python` (1911f94)
+- **BREAKING**: Import path changed from `from src.dex_import` to `from dex_python`
+- Scripts moved to `scripts/` directory for cleaner project root
+- Documentation reorganized into `docs/` with `docs/planning/` for internal docs
 - `main.py` now syncs all contacts to SQLite with normalized `contacts`, `emails`, and `phones` tables
 - `main.py` warns before destructive full sync, recommends `sync_with_integrity.py` (386bfca)
 - Test layout and Makefile targets updated to the new suite locations; pytest defaults now exclude integration tests

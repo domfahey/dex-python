@@ -1,8 +1,13 @@
 """Pytest fixtures for Dex client tests."""
 
+import sys
+from pathlib import Path
 from typing import Literal
 
 import pytest
+
+# Add scripts directory to path for tests that import from scripts
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from dex_python import Settings
 

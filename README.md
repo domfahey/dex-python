@@ -1,11 +1,11 @@
-# Dex Import
+# Dex Python
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
 
-Python client for the [Dex](https://getdex.com) CRM API with sync/async support, automatic retries, and local SQLite caching.
+Python SDK for the [Dex](https://getdex.com) CRM API with sync/async clients, automatic retries, and local SQLite caching.
 
 ## Features
 
@@ -78,22 +78,22 @@ except RateLimitError as exc:
 Scripts write contact data to `output/dex_contacts.db` by default (override with
 `DEX_DATA_DIR`):
 
-- `main.py` performs a full refresh and recreates tables on each run.
-- `sync_with_integrity.py` performs incremental syncs with hashes and preserves
+- `scripts/main.py` performs a full refresh and recreates tables on each run.
+- `scripts/sync_with_integrity.py` performs incremental syncs with hashes and preserves
   deduplication metadata.
 
 ```bash
-uv run python main.py
-uv run python sync_with_integrity.py
+make sync                                    # Recommended: incremental sync
+uv run python scripts/sync_with_integrity.py # Direct execution
 ```
 
 ## Deduplication workflow
 
-1. Sync contacts to SQLite (`main.py` or `sync_with_integrity.py`).
-2. Generate a report: `uv run python analyze_duplicates.py`
-3. Flag candidate groups: `uv run python flag_duplicates.py`
-4. Review interactively: `uv run python review_duplicates.py`
-5. Merge confirmed groups: `uv run python resolve_duplicates.py` (destructive)
+1. Sync contacts to SQLite: `make sync`
+2. Generate a report: `make analyze`
+3. Flag candidate groups: `make flag-duplicates`
+4. Review interactively: `uv run python scripts/review_duplicates.py`
+5. Merge confirmed groups: `make resolve-duplicates` (destructive)
 
 Back up the database before merging.
 
@@ -116,9 +116,9 @@ Integration tests are marked with `integration` and require `DEX_API_KEY`.
 
 - [Getting Started](docs/getting-started.md) - Install, configure, and make a first request
 - [API Reference](docs/api.md) - Python client usage
+- [Architecture](docs/architecture.md) - System design and component overview
 - [Name Parsing](docs/name-parsing.md) - probablepeople parsing and stored fields
 - [Dex API Docs](docs/dex_api_docs/README.md) - Local REST API reference
-- [Deduplication Plan](DEDUPLICATION_PLAN.md) - Local database deduplication flow
 
 ### Official Dex API
 
@@ -168,7 +168,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## Security
 
 - See [SECURITY.md](SECURITY.md) for vulnerability reporting
-- See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for the pre-release security audit
 - Never commit API keys or contact data
 - Use `.env` files for local secrets (gitignored)
 

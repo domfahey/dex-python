@@ -48,3 +48,11 @@ export_*.md
 *.bak
 *.swp
 *.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Type checking
+.mypy_cache/
+.ruff_cache/
