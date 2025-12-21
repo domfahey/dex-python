@@ -209,7 +209,7 @@ def find_fuzzy_name_duplicates(
     rows = cursor.fetchall()
 
     blocks: dict[str, list[dict[str, str]]] = {}
-    for rid, first, last in rows:
+    for contact_id, first, last in rows:
         first, last = first.strip(), last.strip()
 
         # Skip empty names after stripping
@@ -217,32 +217,34 @@ def find_fuzzy_name_duplicates(
             continue
 
         try:
-            key = jellyfish.metaphone(last) or last.lower()[:2]
+            phonetic_key = jellyfish.metaphone(last) or last.lower()[:2]
         except Exception:
-            key = last.lower()[:2]
+            phonetic_key = last.lower()[:2]
 
-        if key not in blocks:
-            blocks[key] = []
-        blocks[key].append({"id": rid, "full_name": f"{first} {last}"})
+        if phonetic_key not in blocks:
+            blocks[phonetic_key] = []
+        blocks[phonetic_key].append({"id": contact_id, "full_name": f"{first} {last}"})
 
     results = []
     for items in blocks.values():
         if len(items) < 2:
             continue
-        for i in range(len(items)):
-            for j in range(i + 1, len(items)):
-                p1, p2 = items[i], items[j]
+        for first_index in range(len(items)):
+            for second_index in range(first_index + 1, len(items)):
+                contact1, contact2 = items[first_index], items[second_index]
                 score = jellyfish.jaro_winkler_similarity(
-                    p1["full_name"], p2["full_name"]
+                    contact1["full_name"], contact2["full_name"]
                 )
                 if score >= threshold:
+                    match_value = (
+                        f"{contact1['full_name']} <-> "
+                        f"{contact2['full_name']} ({score:.2f})"
+                    )
                     results.append(
                         {
                             "match_type": "fuzzy_name",
-                            "match_value": (
-                                f"{p1['full_name']} <-> {p2['full_name']} ({score:.2f})"
-                            ),
-                            "contact_ids": [p1["id"], p2["id"]],
+                            "match_value": match_value,
+                            "contact_ids": [contact1["id"], contact2["id"]],
                         }
                     )
     return results
@@ -262,11 +264,11 @@ def cluster_duplicates(matches: list[dict[str, Any]]) -> list[list[str]]:
     """
     graph: nx.Graph[str] = nx.Graph()
     for match in matches:
-        ids = match["contact_ids"]
-        for i in range(len(ids)):
-            for j in range(i + 1, len(ids)):
-                graph.add_edge(ids[i], ids[j])
-    return [list(c) for c in nx.connected_components(graph)]
+        contact_ids = match["contact_ids"]
+        for first_index in range(len(contact_ids)):
+            for second_index in range(first_index + 1, len(contact_ids)):
+                graph.add_edge(contact_ids[first_index], contact_ids[second_index])
+    return [list(cluster) for cluster in nx.connected_components(graph)]
 
 
 def merge_cluster(
@@ -303,12 +305,12 @@ def merge_cluster(
 
     if primary_id:
         # Find the row corresponding to primary_id
-        primary_row_list = [r for r in rows if r[0] == primary_id]
+        primary_row_list = [row for row in rows if row[0] == primary_id]
         if not primary_row_list:
             raise ValueError(f"Primary ID {primary_id} not found in contact cluster")
         primary_row = primary_row_list[0]
         # Remove primary from candidates to merge FROM
-        other_rows = [r for r in rows if r[0] != primary_id]
+        other_rows = [row for row in rows if row[0] != primary_id]
         sorted_rows = [primary_row] + other_rows
     else:
         # Auto-select best primary
@@ -321,11 +323,11 @@ def merge_cluster(
 
     current_primary = list(primary_row)
     for other_row in sorted_rows[1:]:
-        for i in range(len(current_primary)):
-            if (current_primary[i] is None or current_primary[i] == "") and other_row[
-                i
-            ]:
-                current_primary[i] = other_row[i]
+        for field_index in range(len(current_primary)):
+            current_field = current_primary[field_index]
+            is_empty = current_field is None or current_field == ""
+            if is_empty and other_row[field_index]:
+                current_primary[field_index] = other_row[field_index]
 
     cursor.execute(
         """
