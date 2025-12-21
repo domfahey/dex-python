@@ -1,7 +1,6 @@
 """Tests for deduplication helper functions."""
 
 import sqlite3
-from typing import Any
 
 import pytest
 
@@ -174,10 +173,14 @@ class TestConsolidateRelatedRecords:
 
         # Create tables
         cursor.execute(
-            "CREATE TABLE emails (id INTEGER PRIMARY KEY, contact_id TEXT, email TEXT)"
+            """CREATE TABLE emails (
+                id INTEGER PRIMARY KEY, contact_id TEXT, email TEXT
+            )"""
         )
         cursor.execute(
-            "CREATE TABLE phones (id INTEGER PRIMARY KEY, contact_id TEXT, phone_number TEXT)"
+            """CREATE TABLE phones (
+                id INTEGER PRIMARY KEY, contact_id TEXT, phone_number TEXT
+            )"""
         )
 
         # Insert test data
@@ -206,10 +209,14 @@ class TestConsolidateRelatedRecords:
         cursor = conn.cursor()
 
         cursor.execute(
-            "CREATE TABLE emails (id INTEGER PRIMARY KEY, contact_id TEXT, email TEXT)"
+            """CREATE TABLE emails (
+                id INTEGER PRIMARY KEY, contact_id TEXT, email TEXT
+            )"""
         )
         cursor.execute(
-            "CREATE TABLE phones (id INTEGER PRIMARY KEY, contact_id TEXT, phone_number TEXT)"
+            """CREATE TABLE phones (
+                id INTEGER PRIMARY KEY, contact_id TEXT, phone_number TEXT
+            )"""
         )
 
         # Insert duplicate emails (different case)
