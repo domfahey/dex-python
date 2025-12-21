@@ -175,7 +175,7 @@ def sync_as_notes(
     stats = {"created": 0, "skipped": 0, "errors": 0}
     total = len(contacts)
 
-    for i, contact in enumerate(contacts):
+    for current_index, contact in enumerate(contacts):
         note_text = build_enrichment_note(contact["company"], contact["role"])
         if not note_text:
             stats["skipped"] += 1
@@ -192,8 +192,8 @@ def sync_as_notes(
         except Exception:
             stats["errors"] += 1
 
-        if progress_callback and (i + 1) % 100 == 0:
-            progress_callback(i + 1, total, stats)
+        if progress_callback and (current_index + 1) % 100 == 0:
+            progress_callback(current_index + 1, total, stats)
 
     return stats
 
