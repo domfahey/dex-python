@@ -258,21 +258,28 @@ def save_contacts_batch(
         cursor.execute("DELETE FROM emails WHERE contact_id = ?", (c_id,))
         cursor.execute("DELETE FROM phones WHERE contact_id = ?", (c_id,))
 
-        for email_item in item.get("emails", []):
-            if e := email_item.get("email"):
-                cursor.execute(
-                    "INSERT INTO emails (contact_id, email) VALUES (?, ?)", (c_id, e)
-                )
+        # Batch insert emails for better performance
+        email_data = [
+            (c_id, email_item.get("email"))
+            for email_item in item.get("emails", [])
+            if email_item.get("email")
+        ]
+        if email_data:
+            cursor.executemany(
+                "INSERT INTO emails (contact_id, email) VALUES (?, ?)", email_data
+            )
 
-        for phone_item in item.get("phones", []):
-            if p := phone_item.get("phone_number"):
-                cursor.execute(
-                    """
-                    INSERT INTO phones (contact_id, phone_number, label)
-                    VALUES (?, ?, ?)
-                    """,
-                    (c_id, p, phone_item.get("label")),
-                )
+        # Batch insert phones for better performance
+        phone_data = [
+            (c_id, phone_item.get("phone_number"), phone_item.get("label"))
+            for phone_item in item.get("phones", [])
+            if phone_item.get("phone_number")
+        ]
+        if phone_data:
+            cursor.executemany(
+                "INSERT INTO phones (contact_id, phone_number, label) VALUES (?, ?, ?)",
+                phone_data,
+            )
 
     conn.commit()
     return added, updated, unchanged
@@ -321,14 +328,17 @@ def save_reminders_batch(
 
         # Update links
         cursor.execute("DELETE FROM reminder_contacts WHERE reminder_id = ?", (r_id,))
-        for contact in item.get("contact_ids", []):
-            # API returns contacts as list of dicts: [{"id": "...", ...}]
-            if c_id := contact.get("id"):
-                cursor.execute(
-                    "INSERT INTO reminder_contacts (reminder_id, contact_id) "
-                    "VALUES (?, ?)",
-                    (r_id, c_id),
-                )
+        # Batch insert contact links for better performance
+        contact_links = [
+            (r_id, contact.get("id"))
+            for contact in item.get("contact_ids", [])
+            if contact.get("id")
+        ]
+        if contact_links:
+            cursor.executemany(
+                "INSERT INTO reminder_contacts (reminder_id, contact_id) VALUES (?, ?)",
+                contact_links,
+            )
 
     conn.commit()
     return added, updated, unchanged
@@ -376,12 +386,17 @@ def save_notes_batch(
 
         # Update links
         cursor.execute("DELETE FROM note_contacts WHERE note_id = ?", (n_id,))
-        for contact in item.get("contacts", []):
-            if c_id := contact.get("id"):
-                cursor.execute(
-                    "INSERT INTO note_contacts (note_id, contact_id) VALUES (?, ?)",
-                    (n_id, c_id),
-                )
+        # Batch insert contact links for better performance
+        contact_links = [
+            (n_id, contact.get("id"))
+            for contact in item.get("contacts", [])
+            if contact.get("id")
+        ]
+        if contact_links:
+            cursor.executemany(
+                "INSERT INTO note_contacts (note_id, contact_id) VALUES (?, ?)",
+                contact_links,
+            )
 
     conn.commit()
     return added, updated, unchanged
