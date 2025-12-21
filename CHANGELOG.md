@@ -9,17 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2025-12-21
 
+Major release with package rename, deduplication engine, and project reorganization.
+
 ### Added
-- Birthday-based duplicate detection (Level 1.5)
-- Name parsing module with probablepeople integration (`dex_python.name_parsing`)
-- Job title enrichment with company/role extraction (`dex_python.enrichment`)
-- Sync-back functionality to push enrichments to Dex API (`dex_python.sync_back`)
+
+#### Deduplication Engine
+- Level 1: Exact email and phone matching
+- Level 1.5: Birthday + name matching
+- Level 2: Exact name + job title matching
+- Level 3: Fuzzy name matching with Jaro-Winkler and Soundex
+- Clustering algorithm to group related duplicates
+- Merge utilities to consolidate duplicate records
+
+#### Enrichment
+- Name parsing with probablepeople integration
+- Job title parsing to extract company and role
+- Sync-back functionality to push enrichments to Dex API
+
+#### CLI Scripts
+- `scripts/sync_with_integrity.py` - Incremental sync with hash-based change detection
+- `scripts/analyze_duplicates.py` - Generate duplicate analysis reports
+- `scripts/flag_duplicates.py` - Mark duplicate candidates in database
+- `scripts/review_duplicates.py` - Interactive duplicate review
+- `scripts/resolve_duplicates.py` - Merge confirmed duplicates
+- `scripts/sync_enrichment_back.py` - Push enrichments to Dex API
+
+#### Infrastructure
 - GitHub issue and PR templates
-- Deduplication engine with level 1/2/3 matching, clustering, and merge utilities
-- CLI scripts for duplicate workflow: `analyze`, `flag-duplicates`, `resolve-duplicates`
-- Async sync tool with integrity hashing and incremental updates
-- `make doctor` command to verify environment
-- `make sync` command for incremental sync
+- `make sync` - Run incremental sync
+- `make analyze` - Run duplicate analysis
+- `make doctor` - Verify environment and dependencies
 - Faker for test data generation
 
 ### Changed
@@ -27,35 +46,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING**: Import path changed from `from src.dex_import` to `from dex_python`
 - Scripts moved to `scripts/` directory
 - Documentation reorganized into `docs/` with `docs/planning/` for internal docs
-- Project structure follows open source best practices
 
 ### Fixed
 - `AsyncDexClient` `max_retries` default now matches sync client (0)
 - Write operations return normalized entity data instead of raw API wrappers
 - Paginated methods properly extract total counts from nested API responses
-- Database operations preserve deduplication metadata on updates
-- Filter empty/whitespace names in fuzzy matching to prevent false positives
+- Database updates preserve deduplication metadata
+- Empty/whitespace names filtered in fuzzy matching
 
 ### Security
-- Added `.gitignore` patterns for sensitive data exports
 - Security audit completed before public release
+- `.gitignore` patterns for sensitive data exports
+- Removed PII from git history
 
 ## [0.1.0] - 2025-12-19
 
-Initial release implementing the [Dex CRM API](https://getdex.com/docs/api-reference/authentication).
+Initial release of the Dex Python SDK.
 
 ### Added
-- `DexClient` synchronous client with full CRUD for contacts, reminders, and notes
-- `AsyncDexClient` for async API operations
-- Context manager support for both clients
-- `Settings` configuration with pydantic-settings
+
+#### Core Client
+- `DexClient` - Synchronous client for [Dex CRM API](https://getdex.com/docs/api-reference)
+- Full CRUD operations for contacts, reminders, and notes (15 endpoints)
+- Context manager support (`with DexClient() as client:`)
+- `Settings` configuration via pydantic-settings
 - Environment variable support (`DEX_API_KEY`, `DEX_BASE_URL`)
-- Pydantic models: `Contact`, `ContactCreate`, `ContactUpdate`, `Reminder`, `ReminderCreate`, `ReminderUpdate`, `Note`, `NoteCreate`, `NoteUpdate`
-- Paginated response models with `has_more` property
-- Custom exceptions: `DexAPIError`, `AuthenticationError`, `RateLimitError`, `ValidationError`, `ContactNotFoundError`, `ReminderNotFoundError`, `NoteNotFoundError`
-- Retry logic with exponential backoff for transient errors (429, 500, 502, 503, 504)
-- Unit tests with pytest-httpx mocking
+
+#### Async Client
+- `AsyncDexClient` - Async version of all client methods
+- Async context manager support (`async with AsyncDexClient() as client:`)
+
+#### Data Models
+- `Contact`, `ContactCreate`, `ContactUpdate`
+- `Reminder`, `ReminderCreate`, `ReminderUpdate` with `mark_complete()` factory
+- `Note`, `NoteCreate`, `NoteUpdate`
+- `PaginatedContacts`, `PaginatedReminders`, `PaginatedNotes` with `has_more` property
+
+#### Error Handling
+- `DexAPIError` - Base exception with `status_code` and `response_data`
+- `AuthenticationError` - 401 responses
+- `RateLimitError` - 429 responses with `retry_after`
+- `ValidationError` - 400 responses
+- `ContactNotFoundError`, `ReminderNotFoundError`, `NoteNotFoundError` - 404 responses
+
+#### Retry Logic
+- Configurable `max_retries` and `retry_delay` parameters
+- Exponential backoff on transient errors (429, 500, 502, 503, 504)
+- No retry on client errors (400, 401, 404)
+
+#### Testing
+- Unit tests with pytest-httpx mocking (160+ tests)
 - Integration tests against live API
+- Strict mypy type checking
+
+#### Documentation
+- API reference with usage examples
+- Getting started guide
 - MIT License
 - Contributing guidelines
 - Security policy
