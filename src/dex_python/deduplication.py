@@ -18,6 +18,7 @@ Example:
 """
 
 import sqlite3
+from itertools import combinations
 from typing import Any
 
 import jellyfish
@@ -262,7 +263,6 @@ def cluster_duplicates(matches: list[dict[str, Any]]) -> list[list[str]]:
         ids = match["contact_ids"]
         if len(ids) >= 2:
             # Add edges efficiently using itertools.combinations
-            from itertools import combinations
             graph.add_edges_from(combinations(ids, 2))
     return [list(c) for c in nx.connected_components(graph)]
 
