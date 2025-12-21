@@ -2,11 +2,15 @@
 
 import os
 import sqlite3
+import urllib.parse
+import webbrowser
 from pathlib import Path
 
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
+
+DEX_SEARCH_URL = "https://getdex.com/appv3/search?terms="
 
 
 def setup_db(cursor: sqlite3.Cursor) -> None:
@@ -117,17 +121,33 @@ def main() -> None:
 
             console.print(table)
 
-            # Options
-            choices = [str(x + 1) for x in range(len(contacts))] + ["s", "q"]
-            choice = Prompt.ask(
-                "\n[bold]Actions:[/bold]\n"
-                "  [cyan][1-N][/cyan] Label this ID as PRIMARY (Confirm Duplicates)\n"
-                "  [yellow][s][/yellow]   Mark as NOT Duplicates (False Positive)\n"
-                "  [red][q][/red]   Quit\n"
-                "Select",
-                choices=choices,
-                default="s",
-            )
+            # Build search term from first contact's name
+            first_contact = contacts[0]
+            search_name = f"{first_contact[1] or ''} {first_contact[2] or ''}".strip()
+
+            # Prompt loop - allows reopening URL without advancing
+            while True:
+                choices = [str(x + 1) for x in range(len(contacts))] + ["o", "s", "q"]
+                choice = Prompt.ask(
+                    "\n[bold]Actions:[/bold]\n"
+                    "  [cyan][1-N][/cyan] Label this ID as PRIMARY (Confirm Duplicates)\n"
+                    "  [blue][o][/blue]   Open in Dex (search for this contact)\n"
+                    "  [yellow][s][/yellow]   Mark as NOT Duplicates (False Positive)\n"
+                    "  [red][q][/red]   Quit\n"
+                    "Select",
+                    choices=choices,
+                    default="s",
+                )
+
+                if choice == "o":
+                    # Open Dex search in browser
+                    encoded_name = urllib.parse.quote(search_name)
+                    url = f"{DEX_SEARCH_URL}{encoded_name}"
+                    webbrowser.open(url)
+                    console.print(f"[blue]↗ Opened: {url}[/blue]")
+                    continue  # Stay on same group
+                else:
+                    break  # Exit prompt loop, process choice
 
             if choice == "q":
                 console.print("\n[bold red]Exiting...[/bold red]")
