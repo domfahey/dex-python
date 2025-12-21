@@ -21,15 +21,7 @@ from typing import Any, Self
 import httpx
 
 from .config import Settings
-from .exceptions import (
-    AuthenticationError,
-    ContactNotFoundError,
-    DexAPIError,
-    NoteNotFoundError,
-    RateLimitError,
-    ReminderNotFoundError,
-    ValidationError,
-)
+from .error_handler import handle_error_response
 from .models import (
     ContactCreate,
     ContactUpdate,
@@ -97,58 +89,16 @@ class DexClient:
     def _handle_error(self, response: httpx.Response, endpoint: str) -> None:
         """Convert HTTP error response to appropriate exception.
 
+        This method delegates to the shared error handler.
+
         Args:
             response: The HTTP response with error status.
             endpoint: The API endpoint that was called.
 
         Raises:
-            AuthenticationError: For 401 responses.
-            RateLimitError: For 429 responses.
-            ValidationError: For 400 responses.
-            ContactNotFoundError: For 404 on /contacts endpoints.
-            ReminderNotFoundError: For 404 on /reminders endpoints.
-            NoteNotFoundError: For 404 on /timeline_items endpoints.
-            DexAPIError: For all other error responses.
+            Various DexAPIError subclasses based on status code.
         """
-        status_code = response.status_code
-        try:
-            data = response.json()
-        except Exception:
-            data = {}
-
-        if status_code == 401:
-            raise AuthenticationError(
-                "Invalid API key", status_code=401, response_data=data
-            )
-        elif status_code == 429:
-            retry_after = response.headers.get("Retry-After")
-            raise RateLimitError(
-                "Rate limit exceeded",
-                retry_after=int(retry_after) if retry_after else None,
-            )
-        elif status_code == 400:
-            raise ValidationError(
-                data.get("error", "Validation error"),
-                status_code=400,
-                response_data=data,
-            )
-        elif status_code == 404:
-            if "/contacts/" in endpoint:
-                contact_id = endpoint.split("/contacts/")[-1].split("/")[0]
-                raise ContactNotFoundError(contact_id)
-            elif "/reminders/" in endpoint:
-                reminder_id = endpoint.split("/reminders/")[-1].split("/")[0]
-                raise ReminderNotFoundError(reminder_id)
-            elif "/timeline_items/" in endpoint:
-                note_id = endpoint.split("/timeline_items/")[-1].split("/")[0]
-                raise NoteNotFoundError(note_id)
-            raise DexAPIError("Not found", status_code=404, response_data=data)
-        else:
-            raise DexAPIError(
-                data.get("error", f"API error: {status_code}"),
-                status_code=status_code,
-                response_data=data,
-            )
+        handle_error_response(response, endpoint)
 
     def _should_retry(self, status_code: int) -> bool:
         """Check if a request should be retried based on HTTP status code."""

@@ -146,6 +146,87 @@ def compute_hash(data: dict[str, Any]) -> str:
     return hashlib.sha256(json_str.encode("utf-8")).hexdigest()
 
 
+def _check_contact_changed(
+    cursor: sqlite3.Cursor, c_id: str, new_hash: str
+) -> tuple[bool, dict[str, Any] | None]:
+    """Check if contact has changed and retrieve existing dedup metadata.
+
+    Args:
+        cursor: Database cursor.
+        c_id: Contact ID.
+        new_hash: New hash of contact data.
+
+    Returns:
+        Tuple of (has_changed, existing_dedup_metadata).
+    """
+    cursor.execute(
+        """SELECT record_hash, duplicate_group_id, duplicate_resolution,
+           primary_contact_id FROM contacts WHERE id = ?""",
+        (c_id,),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        return True, None
+
+    if row[0] == new_hash:
+        return False, None
+
+    existing_dedup = {
+        "duplicate_group_id": row[1],
+        "duplicate_resolution": row[2],
+        "primary_contact_id": row[3],
+    }
+    return True, existing_dedup
+
+
+def _enrich_contact_data(
+    item: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Parse name and extract company/role from contact data.
+
+    Args:
+        item: Contact data dictionary.
+
+    Returns:
+        Tuple of (name_data, job_data).
+    """
+    name_data = parse_contact_name(item)
+    job_data = parse_job_title(item.get("job_title"))
+    return name_data, job_data
+
+
+def _save_contact_related_data(
+    cursor: sqlite3.Cursor, c_id: str, item: dict[str, Any]
+) -> None:
+    """Save emails and phones for a contact.
+
+    Args:
+        cursor: Database cursor.
+        c_id: Contact ID.
+        item: Contact data dictionary.
+    """
+    # Refresh derived tables
+    cursor.execute("DELETE FROM emails WHERE contact_id = ?", (c_id,))
+    cursor.execute("DELETE FROM phones WHERE contact_id = ?", (c_id,))
+
+    for email_item in item.get("emails", []):
+        if e := email_item.get("email"):
+            cursor.execute(
+                "INSERT INTO emails (contact_id, email) VALUES (?, ?)", (c_id, e)
+            )
+
+    for phone_item in item.get("phones", []):
+        if p := phone_item.get("phone_number"):
+            cursor.execute(
+                """
+                INSERT INTO phones (contact_id, phone_number, label)
+                VALUES (?, ?, ?)
+                """,
+                (c_id, p, phone_item.get("label")),
+            )
+
+
 def save_contacts_batch(
     conn: sqlite3.Connection,
     items: list[dict[str, Any]],
@@ -162,28 +243,18 @@ def save_contacts_batch(
             continue
 
         new_hash = compute_hash(item)
-        cursor.execute(
-            """SELECT record_hash, duplicate_group_id, duplicate_resolution,
-               primary_contact_id FROM contacts WHERE id = ?""",
-            (c_id,),
-        )
-        row = cursor.fetchone()
+        has_changed, existing_dedup = _check_contact_changed(cursor, c_id, new_hash)
 
-        # Preserve dedup metadata from existing record
-        existing_dedup = None
-        if row:
-            if row[0] == new_hash:
-                unchanged += 1
-                continue
+        if not has_changed:
+            unchanged += 1
+            continue
+
+        if existing_dedup:
             updated += 1
-            existing_dedup = {
-                "duplicate_group_id": row[1],
-                "duplicate_resolution": row[2],
-                "primary_contact_id": row[3],
-            }
         else:
             added += 1
 
+        # Extract basic fields
         first = item.get("first_name")
         last = item.get("last_name")
         job = item.get("job_title")
@@ -191,16 +262,8 @@ def save_contacts_batch(
         website = item.get("website")
         now = datetime.now(UTC).isoformat()
 
-        # Parse name
-        name_data = parse_contact_name(item)
-        name_given = name_data.get("name_given")
-        name_surname = name_data.get("name_surname")
-        name_parsed = name_data.get("name_parsed")
-
-        # Extract company/role from job title
-        job_data = parse_job_title(job)
-        company = job_data.get("company")
-        role = job_data.get("role")
+        # Enrich contact data
+        name_data, job_data = _enrich_contact_data(item)
 
         # Use preserved dedup metadata or None for new contacts
         dup_group = existing_dedup["duplicate_group_id"] if existing_dedup else None
@@ -231,33 +294,16 @@ def save_contacts_batch(
                 dup_group,
                 dup_resolution,
                 primary_id,
-                name_given,
-                name_surname,
-                name_parsed,
-                company,
-                role,
+                name_data.get("name_given"),
+                name_data.get("name_surname"),
+                name_data.get("name_parsed"),
+                job_data.get("company"),
+                job_data.get("role"),
             ),
         )
 
-        # Refresh derived tables
-        cursor.execute("DELETE FROM emails WHERE contact_id = ?", (c_id,))
-        cursor.execute("DELETE FROM phones WHERE contact_id = ?", (c_id,))
-
-        for email_item in item.get("emails", []):
-            if e := email_item.get("email"):
-                cursor.execute(
-                    "INSERT INTO emails (contact_id, email) VALUES (?, ?)", (c_id, e)
-                )
-
-        for phone_item in item.get("phones", []):
-            if p := phone_item.get("phone_number"):
-                cursor.execute(
-                    """
-                    INSERT INTO phones (contact_id, phone_number, label)
-                    VALUES (?, ?, ?)
-                    """,
-                    (c_id, p, phone_item.get("label")),
-                )
+        # Save related data
+        _save_contact_related_data(cursor, c_id, item)
 
     conn.commit()
     return added, updated, unchanged
