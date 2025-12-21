@@ -323,7 +323,7 @@ def merge_cluster(
         primary_id = primary_row[0]
 
     current_primary = list(primary_row)
-    # Optimize: merge all rows in a single pass instead of nested loops
+    # Merge fields from other rows into primary (fills in missing values)
     for other_row in sorted_rows[1:]:
         for i, field in enumerate(other_row):
             if (current_primary[i] is None or current_primary[i] == "") and field:
