@@ -145,7 +145,7 @@ def main() -> None:
                 choices = [str(x + 1) for x in range(len(contacts))] + ["o", "s", "q"]
                 choice = Prompt.ask(
                     "\n[bold]Actions:[/bold]\n"
-                    "  [cyan][1-N][/cyan] Label this ID as PRIMARY (Confirm Duplicates)\n"
+                    "  [cyan][1-N][/cyan] Label as PRIMARY (Confirm Duplicates)\n"
                     f"  [blue][o][/blue]   Open in Dex (search: '{search_term}')\n"
                     "  [yellow][s][/yellow]   Mark as NOT Duplicates (False Positive)\n"
                     "  [red][q][/red]   Quit\n"
