@@ -122,23 +122,15 @@ def main() -> None:
 
             console.print(table)
 
-            # Build smart search term - use last name to catch all variations
-            # Collect all name parts to find the best search term
-            all_name_parts: list[str] = []
-            for c in contacts:
-                if c[1]:  # first_name
-                    all_name_parts.append(c[1].strip().lower())
-                if c[2]:  # last_name
-                    all_name_parts.append(c[2].strip().lower())
-
-            # Find most common name part (likely the shared last name)
-            name_counts = Counter(all_name_parts)
-            if name_counts:
-                # Use the most common name part as search term
+            # Build search term - use last name (more specific than first name)
+            last_names = [c[2].strip() for c in contacts if c[2] and c[2].strip()]
+            if last_names:
+                # Use most common last name across the cluster
+                name_counts = Counter(ln.lower() for ln in last_names)
                 search_term = name_counts.most_common(1)[0][0]
             else:
-                # Fallback to first contact's last name
-                search_term = (contacts[0][2] or contacts[0][1] or "").strip()
+                # Fallback to first contact's first name if no last names
+                search_term = (contacts[0][1] or "").strip().lower()
 
             # Prompt loop - allows reopening URL without advancing
             while True:
