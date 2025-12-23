@@ -25,6 +25,7 @@ See Also:
 from .async_client import AsyncDexClient
 from .client import DexClient
 from .config import Settings
+from .deduplication import find_fingerprint_name_duplicates
 from .exceptions import (
     AuthenticationError,
     ContactNotFoundError,
@@ -33,6 +34,13 @@ from .exceptions import (
     RateLimitError,
     ReminderNotFoundError,
     ValidationError,
+)
+from .fingerprint import (
+    ensemble_similarity,
+    fingerprint,
+    ngram_fingerprint,
+    normalize_phone,
+    normalized_levenshtein,
 )
 from .models import (
     Contact,
@@ -56,6 +64,8 @@ __all__ = [
     "AsyncDexClient",
     "DexClient",
     "Settings",
+    # Deduplication
+    "find_fingerprint_name_duplicates",
     # Exceptions
     "AuthenticationError",
     "ContactNotFoundError",
@@ -64,6 +74,12 @@ __all__ = [
     "RateLimitError",
     "ReminderNotFoundError",
     "ValidationError",
+    # Fingerprinting
+    "ensemble_similarity",
+    "fingerprint",
+    "ngram_fingerprint",
+    "normalize_phone",
+    "normalized_levenshtein",
     # Models
     "Contact",
     "ContactCreate",

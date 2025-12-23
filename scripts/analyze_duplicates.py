@@ -9,6 +9,7 @@ from typing import Any
 from dex_python.deduplication import (
     find_birthday_name_duplicates,
     find_email_duplicates,
+    find_fingerprint_name_duplicates,
     find_fuzzy_name_duplicates,
     find_name_and_title_duplicates,
     find_phone_duplicates,
@@ -66,6 +67,9 @@ def generate_report(db_path: str, output_path: str) -> None:
     print("Running Level 1.5 Analysis (Name + Birthday)...")
     birthday_dupes = find_birthday_name_duplicates(conn)
 
+    print("Running Level 1.5b Analysis (Fingerprint Name - OpenRefine-style)...")
+    fingerprint_dupes = find_fingerprint_name_duplicates(conn)
+
     print("Running Level 2 Analysis (Name + Title)...")
     name_title_dupes = find_name_and_title_duplicates(conn)
 
@@ -78,6 +82,7 @@ def generate_report(db_path: str, output_path: str) -> None:
         email_dupes,
         phone_dupes,
         birthday_dupes,
+        fingerprint_dupes,
         name_title_dupes,
         fuzzy_dupes,
     ]
@@ -114,6 +119,14 @@ def generate_report(db_path: str, output_path: str) -> None:
             f.write("_No name + birthday duplicates found._\n")
         for group in birthday_dupes:
             write_group_to_file(f, conn, group, "Birthday")
+
+        f.write("## Level 1.5b: Fingerprint Name Matches (High Confidence)\n")
+        f.write("Catches reordered names (Tom Cruise vs Cruise, Tom), ")
+        f.write("unicode variations (José vs Jose), and punctuation differences.\n\n")
+        if not fingerprint_dupes:
+            f.write("_No fingerprint name duplicates found._\n")
+        for group in fingerprint_dupes:
+            write_group_to_file(f, conn, group, "Fingerprint")
 
         f.write("## Level 2: Rule-Based Matches (Medium Confidence)\n")
         f.write("### Shared Name + Job Title\n")
