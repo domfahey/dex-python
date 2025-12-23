@@ -2,6 +2,7 @@
 
 import os
 import sqlite3
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -76,8 +77,7 @@ def generate_report(db_path: str, output_path: str) -> None:
     # High threshold for report
     fuzzy_dupes = find_fuzzy_name_duplicates(conn, threshold=0.95)
 
-    # Calculate total unique contacts involved
-    all_dupe_ids = set()
+    # Calculate total unique contacts involved - optimized with chain
     all_dupes = [
         email_dupes,
         phone_dupes,
@@ -86,9 +86,11 @@ def generate_report(db_path: str, output_path: str) -> None:
         name_title_dupes,
         fuzzy_dupes,
     ]
-    for dupes in all_dupes:
-        for group in dupes:
-            all_dupe_ids.update(group["contact_ids"])
+    all_dupe_ids = set(
+        chain.from_iterable(
+            group["contact_ids"] for dupes in all_dupes for group in dupes
+        )
+    )
 
     print(f"Total contacts flagged as potential duplicates: {len(all_dupe_ids)}")
 

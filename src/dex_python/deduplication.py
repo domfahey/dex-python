@@ -20,6 +20,7 @@ Example:
 """
 
 import sqlite3
+from itertools import combinations
 from typing import Any
 
 import jellyfish
@@ -51,16 +52,15 @@ def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """
 
     cursor.execute(query)
-    results = []
-    for row in cursor.fetchall():
-        email, ids_str = row
-        results.append(
-            {
-                "match_type": "email",
-                "match_value": email,
-                "contact_ids": ids_str.split(","),
-            }
-        )
+    # Use list comprehension for better performance
+    results = [
+        {
+            "match_type": "email",
+            "match_value": email,
+            "contact_ids": ids_str.split(","),
+        }
+        for email, ids_str in cursor.fetchall()
+    ]
     return results
 
 
@@ -149,16 +149,15 @@ def find_birthday_name_duplicates(conn: sqlite3.Connection) -> list[dict[str, An
     """
 
     cursor.execute(query)
-    results = []
-    for row in cursor.fetchall():
-        full_name, month_day, ids_str = row
-        results.append(
-            {
-                "match_type": "birthday_name",
-                "match_value": f"{full_name} (birthday: {month_day})",
-                "contact_ids": ids_str.split(","),
-            }
-        )
+    # Use list comprehension for better performance
+    results = [
+        {
+            "match_type": "birthday_name",
+            "match_value": f"{full_name} (birthday: {month_day})",
+            "contact_ids": ids_str.split(","),
+        }
+        for full_name, month_day, ids_str in cursor.fetchall()
+    ]
     return results
 
 
@@ -249,16 +248,15 @@ def find_name_and_title_duplicates(conn: sqlite3.Connection) -> list[dict[str, A
     """
 
     cursor.execute(query)
-    results = []
-    for row in cursor.fetchall():
-        full_name, title, ids_str = row
-        results.append(
-            {
-                "match_type": "name_title",
-                "match_value": f"{full_name} | {title}",
-                "contact_ids": ids_str.split(","),
-            }
-        )
+    # Use list comprehension for better performance
+    results = [
+        {
+            "match_type": "name_title",
+            "match_value": f"{full_name} | {title}",
+            "contact_ids": ids_str.split(","),
+        }
+        for full_name, title, ids_str in cursor.fetchall()
+    ]
     return results
 
 
@@ -341,11 +339,12 @@ def cluster_duplicates(matches: list[dict[str, Any]]) -> list[list[str]]:
         List of clusters, where each cluster is a list of contact IDs.
     """
     graph: nx.Graph[str] = nx.Graph()
+    # Optimize: batch add edges instead of nested loops
     for match in matches:
         ids = match["contact_ids"]
-        for i in range(len(ids)):
-            for j in range(i + 1, len(ids)):
-                graph.add_edge(ids[i], ids[j])
+        if len(ids) >= 2:
+            # Add edges efficiently using itertools.combinations
+            graph.add_edges_from(combinations(ids, 2))
     return [list(c) for c in nx.connected_components(graph)]
 
 
@@ -375,7 +374,12 @@ def merge_cluster(
 
     cursor = conn.cursor()
     placeholders = ",".join(["?"] * len(contact_ids))
-    cursor.execute(f"SELECT * FROM contacts WHERE id IN ({placeholders})", contact_ids)
+    # Fetch only needed columns instead of SELECT *
+    cursor.execute(
+        f"""SELECT id, first_name, last_name, job_title, linkedin, website, full_data 
+           FROM contacts WHERE id IN ({placeholders})""",
+        contact_ids,
+    )
     rows = cursor.fetchall()
 
     if not rows:
@@ -400,12 +404,11 @@ def merge_cluster(
         primary_id = primary_row[0]
 
     current_primary = list(primary_row)
+    # Merge fields from other rows into primary (fills in missing values)
     for other_row in sorted_rows[1:]:
-        for i in range(len(current_primary)):
-            if (current_primary[i] is None or current_primary[i] == "") and other_row[
-                i
-            ]:
-                current_primary[i] = other_row[i]
+        for i, field in enumerate(other_row):
+            if (current_primary[i] is None or current_primary[i] == "") and field:
+                current_primary[i] = field
 
     cursor.execute(
         """

@@ -97,19 +97,33 @@ def main() -> None:
             table.add_column("Emails")
             table.add_column("Phones")
 
-            contact_ids = []
+            contact_ids = [row[0] for row in contacts]
+
+            # Batch fetch emails and phones to avoid N+1 queries
+            placeholders = ",".join(["?"] * len(contact_ids))
+            cursor.execute(
+                f"SELECT contact_id, email FROM emails WHERE contact_id IN ({placeholders})",
+                contact_ids,
+            )
+            emails_by_contact = {}
+            for c_id, email in cursor.fetchall():
+                if email:
+                    emails_by_contact.setdefault(c_id, []).append(email)
+
+            cursor.execute(
+                f"SELECT contact_id, phone_number FROM phones WHERE contact_id IN ({placeholders})",
+                contact_ids,
+            )
+            phones_by_contact = {}
+            for c_id, phone in cursor.fetchall():
+                if phone:
+                    phones_by_contact.setdefault(c_id, []).append(phone)
 
             for idx, row in enumerate(contacts):
                 c_id, first, last, job = row
-                contact_ids.append(c_id)
 
-                cursor.execute("SELECT email FROM emails WHERE contact_id = ?", (c_id,))
-                emails = "\n".join([r[0] for r in cursor.fetchall() if r[0]])
-
-                cursor.execute(
-                    "SELECT phone_number FROM phones WHERE contact_id = ?", (c_id,)
-                )
-                phones = "\n".join([r[0] for r in cursor.fetchall() if r[0]])
+                emails = "\n".join(emails_by_contact.get(c_id, []))
+                phones = "\n".join(phones_by_contact.get(c_id, []))
 
                 table.add_row(
                     str(idx + 1),
