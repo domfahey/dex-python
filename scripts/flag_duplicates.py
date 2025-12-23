@@ -5,13 +5,7 @@ import sqlite3
 import uuid
 from pathlib import Path
 
-from dex_python.deduplication import (
-    cluster_duplicates,
-    find_email_duplicates,
-    find_fuzzy_name_duplicates,
-    find_name_and_title_duplicates,
-    find_phone_duplicates,
-)
+from dex_python.deduplication import find_all_duplicates
 
 DATA_DIR = Path(os.getenv("DEX_DATA_DIR", "output"))
 DEFAULT_DB_PATH = DATA_DIR / "dex_contacts.db"
@@ -38,18 +32,10 @@ def main(db_path: str = str(DEFAULT_DB_PATH)) -> None:
 
     print("Finding all potential duplicates...")
 
-    # Collect all signals
-    matches = []
-    matches.extend(find_email_duplicates(conn))
-    matches.extend(find_phone_duplicates(conn))
-    matches.extend(find_name_and_title_duplicates(conn))
-    # Consistent threshold with previous run
-    matches.extend(find_fuzzy_name_duplicates(conn, threshold=0.98))
+    # Use shared duplicate detection function
+    matches, clusters = find_all_duplicates(conn, fuzzy_threshold=0.98)
 
     print(f"Found {len(matches)} duplicate signals.")
-
-    # Cluster into entities
-    clusters = cluster_duplicates(matches)
     print(f"Clustered into {len(clusters)} unique duplicate groups.")
 
     if not clusters:

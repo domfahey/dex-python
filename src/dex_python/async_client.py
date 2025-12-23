@@ -20,16 +20,8 @@ from typing import Any, Self
 
 import httpx
 
+from .client_utils import handle_error, should_retry
 from .config import Settings
-from .exceptions import (
-    AuthenticationError,
-    ContactNotFoundError,
-    DexAPIError,
-    NoteNotFoundError,
-    RateLimitError,
-    ReminderNotFoundError,
-    ValidationError,
-)
 from .models import (
     ContactCreate,
     ContactUpdate,
@@ -46,9 +38,6 @@ from .models import (
     extract_reminder_entity,
     extract_reminders_total,
 )
-
-# HTTP status codes that indicate transient failures worth retrying
-RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 class AsyncDexClient:
@@ -94,66 +83,6 @@ class AsyncDexClient:
             timeout=30.0,
         )
 
-    def _should_retry(self, status_code: int) -> bool:
-        """Check if a request should be retried based on HTTP status code."""
-        return status_code in RETRYABLE_STATUS_CODES
-
-    def _handle_error(self, response: httpx.Response, endpoint: str) -> None:
-        """Convert HTTP error response to appropriate exception.
-
-        Args:
-            response: The HTTP response with error status.
-            endpoint: The API endpoint that was called.
-
-        Raises:
-            AuthenticationError: For 401 responses.
-            RateLimitError: For 429 responses.
-            ValidationError: For 400 responses.
-            ContactNotFoundError: For 404 on /contacts endpoints.
-            ReminderNotFoundError: For 404 on /reminders endpoints.
-            NoteNotFoundError: For 404 on /timeline_items endpoints.
-            DexAPIError: For all other error responses.
-        """
-        status_code = response.status_code
-        try:
-            data = response.json()
-        except Exception:
-            data = {}
-
-        if status_code == 401:
-            raise AuthenticationError(
-                "Invalid API key", status_code=401, response_data=data
-            )
-        elif status_code == 429:
-            retry_after = response.headers.get("Retry-After")
-            raise RateLimitError(
-                "Rate limit exceeded",
-                retry_after=int(retry_after) if retry_after else None,
-            )
-        elif status_code == 400:
-            raise ValidationError(
-                data.get("error", "Validation error"),
-                status_code=400,
-                response_data=data,
-            )
-        elif status_code == 404:
-            if "/contacts/" in endpoint:
-                contact_id = endpoint.split("/contacts/")[-1].split("/")[0]
-                raise ContactNotFoundError(contact_id)
-            elif "/reminders/" in endpoint:
-                reminder_id = endpoint.split("/reminders/")[-1].split("/")[0]
-                raise ReminderNotFoundError(reminder_id)
-            elif "/timeline_items/" in endpoint:
-                note_id = endpoint.split("/timeline_items/")[-1].split("/")[0]
-                raise NoteNotFoundError(note_id)
-            raise DexAPIError("Not found", status_code=404, response_data=data)
-        else:
-            raise DexAPIError(
-                data.get("error", f"API error: {status_code}"),
-                status_code=status_code,
-                response_data=data,
-            )
-
     async def _request_with_retry(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> httpx.Response:
@@ -177,7 +106,7 @@ class AsyncDexClient:
                 return response
 
             is_last_attempt = attempt == self.max_retries
-            if not self._should_retry(response.status_code) or is_last_attempt:
+            if not should_retry(response.status_code) or is_last_attempt:
                 return response
 
             # Exponential backoff
@@ -206,7 +135,7 @@ class AsyncDexClient:
         """
         response = await self._request_with_retry(method, endpoint, **kwargs)
         if response.status_code >= 400:
-            self._handle_error(response, endpoint)
+            handle_error(response, endpoint)
         result: dict[str, Any] = response.json()
         return result
 
@@ -233,7 +162,7 @@ class AsyncDexClient:
             params={"limit": limit, "offset": offset},
         )
         if response.status_code >= 400:
-            self._handle_error(response, endpoint)
+            handle_error(response, endpoint)
         data: dict[str, Any] = response.json()
         result: list[dict[str, Any]] = data.get("contacts", [])
         return result
@@ -257,7 +186,7 @@ class AsyncDexClient:
             params={"limit": limit, "offset": offset},
         )
         if response.status_code >= 400:
-            self._handle_error(response, endpoint)
+            handle_error(response, endpoint)
         data: dict[str, Any] = response.json()
         return PaginatedContacts(
             contacts=data.get("contacts", []),
@@ -386,7 +315,7 @@ class AsyncDexClient:
             params={"limit": limit, "offset": offset},
         )
         if response.status_code >= 400:
-            self._handle_error(response, endpoint)
+            handle_error(response, endpoint)
         data: dict[str, Any] = response.json()
         return PaginatedReminders(
             reminders=data.get("reminders", []),
@@ -484,7 +413,7 @@ class AsyncDexClient:
             params={"limit": limit, "offset": offset},
         )
         if response.status_code >= 400:
-            self._handle_error(response, endpoint)
+            handle_error(response, endpoint)
         data: dict[str, Any] = response.json()
         return PaginatedNotes(
             notes=data.get("timeline_items", []),

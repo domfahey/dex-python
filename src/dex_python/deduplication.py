@@ -451,3 +451,31 @@ def merge_cluster(
     )
     conn.commit()
     return primary_id
+
+
+def find_all_duplicates(
+    conn: sqlite3.Connection, fuzzy_threshold: float = 0.98
+) -> tuple[list[dict[str, Any]], list[list[str]]]:
+    """Find and cluster all potential duplicates using multiple detection methods.
+
+    This is a convenience function that runs all duplicate detection methods
+    and clusters the results into groups.
+
+    Args:
+        conn: SQLite database connection.
+        fuzzy_threshold: Minimum similarity score for fuzzy name
+            matching (default: 0.98).
+
+    Returns:
+        A tuple of (matches, clusters) where:
+        - matches: List of all duplicate signals found
+        - clusters: List of clustered contact ID groups
+    """
+    matches = []
+    matches.extend(find_email_duplicates(conn))
+    matches.extend(find_phone_duplicates(conn))
+    matches.extend(find_name_and_title_duplicates(conn))
+    matches.extend(find_fuzzy_name_duplicates(conn, threshold=fuzzy_threshold))
+
+    clusters = cluster_duplicates(matches)
+    return matches, clusters
