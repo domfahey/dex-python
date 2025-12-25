@@ -1,19 +1,21 @@
 - Goal (incl. success criteria):
-  - Create a pull request for the current branch.
+  - Register the GitHub repo as the remote for this branch.
 - Constraints/Assumptions:
   - Use repository `Makefile` targets; network is restricted.
 - Key decisions:
   - (none)
 - State:
-  - In progress.
+  - Complete.
 - Done:
   - Read `CONTINUITY.md` and refreshed session state.
-  - Confirmed user wants a PR created.
+  - Set `origin` to https://github.com/domfahey/dex-python.git and verified.
 - Now:
-  - Push the branch (if needed) and create PR via `gh`.
+  - Report remote update and proceed to PR creation if requested.
 - Next:
-  - Report PR URL or any blockers.
+  - (none)
 - Open questions (UNCONFIRMED if needed):
   - (none)
 - Working set (files/ids/commands):
   - `CONTINUITY.md`
+  - `git remote set-url origin https://github.com/domfahey/dex-python.git`
+  - `git remote -v`
