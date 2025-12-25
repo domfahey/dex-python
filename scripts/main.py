@@ -68,6 +68,7 @@ def init_db(cursor: sqlite3.Cursor) -> None:
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_emails_contact_id ON emails(contact_id)"
     )
+    # Functional index supports case-insensitive email lookups.
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_emails_email_lower ON emails(lower(email))"
     )

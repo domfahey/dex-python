@@ -399,6 +399,7 @@ def merge_cluster(
         def score_row(row: tuple[Any, ...]) -> int:
             return sum(1 for field in row if field is not None and field != "")
 
+        # Prefer the most complete record to minimize data loss when merging.
         sorted_rows = sorted(rows, key=score_row, reverse=True)
         primary_row = sorted_rows[0]
         primary_id = primary_row[0]

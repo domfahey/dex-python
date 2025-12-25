@@ -106,6 +106,7 @@ def main() -> None:
                 f"WHERE contact_id IN ({placeholders})",
                 contact_ids,
             )
+            # Index by contact_id for quick lookup while rendering the table.
             emails_by_contact = {}
             for c_id, email in cursor.fetchall():
                 if email:
@@ -116,6 +117,7 @@ def main() -> None:
                 f"WHERE contact_id IN ({placeholders})",
                 contact_ids,
             )
+            # Index by contact_id for quick lookup while rendering the table.
             phones_by_contact = {}
             for c_id, phone in cursor.fetchall():
                 if phone:

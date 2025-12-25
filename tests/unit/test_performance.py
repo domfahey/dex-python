@@ -161,7 +161,7 @@ def test_list_comprehension_vs_append():
     ]
     new_time = time.time() - start
 
-    # List comprehension should be reasonably efficient
+    # Use a generous multiplier to reduce micro-benchmark flakiness.
     assert new_time <= old_time * 15.0, "List comprehension should be efficient"
     assert len(results_new) == len(results_old) == n
 
@@ -203,7 +203,7 @@ def test_batch_executemany_vs_individual():
 
     conn.close()
 
-    # Batch should be faster (allow for 1.1x minimum)
+    # Keep the threshold low to tolerate timing variance across environments.
     speedup = individual_time / batch_time
     assert speedup > 1.1, f"Batch insert should be >1.1x faster (was {speedup:.1f}x)"
 
