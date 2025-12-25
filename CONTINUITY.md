@@ -1,0 +1,21 @@
+- Goal (incl. success criteria):
+  - Commit `AGENTS.md` and `CONTINUITY.md` with a best-practice message.
+- Constraints/Assumptions:
+  - Use repository `Makefile` targets; network is restricted.
+- Key decisions:
+  - (none)
+- State:
+  - In progress.
+- Done:
+  - Read `CONTINUITY.md` and refreshed session state.
+- Now:
+  - Stage `AGENTS.md` and `CONTINUITY.md`, then commit.
+- Next:
+  - Report commit details and remaining status.
+- Open questions (UNCONFIRMED if needed):
+  - (none)
+- Working set (files/ids/commands):
+  - `CONTINUITY.md`
+  - `AGENTS.md`
+  - `git add`
+  - `git commit -m`
