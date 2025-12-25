@@ -288,6 +288,8 @@ note = NoteCreate.with_contacts(
 )
 ```
 
+`event_time` also accepts a `datetime` instance and will be serialized to ISO.
+
 ### `update_note(update)`
 
 Update an existing note.
@@ -314,6 +316,9 @@ result = client.delete_note("note-123")
 
 ## Models
 
+Request models are strict: unknown fields are rejected. Timestamp inputs listed
+as `datetime` are serialized to ISO strings on output.
+
 ### ContactCreate
 
 | Field | Type | Description |
@@ -322,17 +327,25 @@ result = client.delete_note("note-123")
 | `last_name` | `str \| None` | Last name |
 | `job_title` | `str \| None` | Job title |
 | `description` | `str \| None` | Description |
+| `education` | `str \| None` | Education |
+| `website` | `str \| None` | Website |
+| `image_url` | `str \| None` | Profile image URL |
 | `linkedin` | `str \| None` | LinkedIn handle |
-| `twitter` | `str \| None` | Twitter handle |
-| `contact_emails` | `dict` | Nested email data |
-| `contact_phone_numbers` | `dict` | Nested phone data |
+| `twitter` | `str \| None` | Twitter/X handle |
+| `instagram` | `str \| None` | Instagram handle |
+| `telegram` | `str \| None` | Telegram handle |
+| `birthday_year` | `int \| None` | Birth year |
+| `last_seen_at` | `str \| datetime \| None` | Last seen timestamp |
+| `next_reminder_at` | `str \| datetime \| None` | Next reminder timestamp |
+| `contact_emails` | `dict` | Nested email payload (`{"data": {"email": ...}}`) |
+| `contact_phone_numbers` | `dict` | Nested phone payload (`{"data": {"phone_number": ..., "label": ...}}`) |
 
 ### ContactUpdate
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `contact_id` | `str` | Contact ID (required) |
-| `changes` | `dict` | Fields to update |
+| `contact_id` | `str` | Contact ID (required; serialized as `contactId`) |
+| `changes` | `dict[str, Any]` | Fields to update |
 | `update_contact_emails` | `bool` | Whether to update email associations |
 | `update_contact_phone_numbers` | `bool` | Whether to update phone associations |
 | `contact_emails` | `list` | Contact email associations |
@@ -342,8 +355,8 @@ result = client.delete_note("note-123")
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `reminder_id` | `str` | Reminder ID (required) |
-| `changes` | `dict` | Fields to update |
+| `reminder_id` | `str` | Reminder ID (required, excluded from payload) |
+| `changes` | `dict[str, Any]` | Fields to update |
 | `update_contacts` | `bool` | Whether to update contact associations |
 | `reminders_contacts` | `list` | Contact associations |
 
@@ -351,10 +364,16 @@ result = client.delete_note("note-123")
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `note_id` | `str` | Note ID (required) |
-| `changes` | `dict` | Fields to update |
+| `note_id` | `str` | Note ID (required, excluded from payload) |
+| `changes` | `dict[str, Any]` | Fields to update |
 | `update_contacts` | `bool` | Whether to update contact associations |
 | `timeline_items_contacts` | `list` | Contact associations |
+
+### Response model notes
+
+- `Contact.emails`/`Contact.phones` use typed response objects.
+- `Reminder.contact_ids` and `Note.contacts` use typed contact references.
+- Response timestamps are returned as ISO strings.
 
 ### Pagination Models
 

@@ -1,21 +1,24 @@
 - Goal (incl. success criteria):
-  - Commit `AGENTS.md` and `CONTINUITY.md` with a best-practice message.
+  - Improve project docs to reflect recent changes and best practices.
 - Constraints/Assumptions:
   - Use repository `Makefile` targets; network is restricted.
 - Key decisions:
   - (none)
 - State:
-  - In progress.
+  - Complete.
 - Done:
   - Read `CONTINUITY.md` and refreshed session state.
+  - Updated README, API docs, performance docs, and changelog to match recent changes.
+  - Ran `make check`; all checks passed.
 - Now:
-  - Stage `AGENTS.md` and `CONTINUITY.md`, then commit.
+  - Report `make check` results.
 - Next:
-  - Report commit details and remaining status.
+  - (none)
 - Open questions (UNCONFIRMED if needed):
   - (none)
 - Working set (files/ids/commands):
   - `CONTINUITY.md`
-  - `AGENTS.md`
-  - `git add`
-  - `git commit -m`
+  - `README.md`
+  - `docs/api.md`
+  - `docs/PERFORMANCE.md`
+  - `CHANGELOG.md`

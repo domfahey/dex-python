@@ -38,10 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `analyze_duplicates.py` includes Level 1.5b fingerprint analysis in reports
 - Makefile refactored following best practices
 - Improved variable naming in deduplication and sync modules for readability
+- Request models now forbid unknown fields and accept datetime inputs for timestamps
+- Nested response fields use typed models for emails, phones, and contacts
 
 ### Fixed
 - Line length compliance with 88 character limit
 - Linting issues in test files
+- Reminder and note update payloads no longer include path IDs
 
 ### Dependencies
 - Added `unidecode>=1.3.0` for unicode→ASCII normalization
