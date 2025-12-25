@@ -24,9 +24,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "(555) 123-4567" now matches "555-123-4567"
 - 44 new unit tests for fingerprinting (TDD approach)
 
+#### Duplicate Review Enhancements
+- 'Open in Dex' option in duplicate review tool for quick web access
+- Smart search term generation for Dex duplicate lookup (uses last name for better specificity)
+
+#### Performance Optimizations
+- Database indexes for deduplication queries
+- Batch operations to eliminate N+1 queries
+- Optimized deduplication helper functions
+
 ### Changed
 - `find_phone_duplicates()` now normalizes phone formats before matching
 - `analyze_duplicates.py` includes Level 1.5b fingerprint analysis in reports
+- Makefile refactored following best practices
+- Improved variable naming in deduplication and sync modules for readability
+
+### Fixed
+- Line length compliance with 88 character limit
+- Linting issues in test files
 
 ### Dependencies
 - Added `unidecode>=1.3.0` for unicode→ASCII normalization

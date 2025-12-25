@@ -138,18 +138,46 @@ def init_db(conn: sqlite3.Connection) -> None:
     """)
 
     # Create indexes for performance optimization
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_emails_contact_id ON emails(contact_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_emails_email_lower ON emails(lower(email))")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_phones_contact_id ON phones(contact_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_phones_number ON phones(phone_number)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(first_name, last_name)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_contacts_job_title ON contacts(job_title)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_contacts_hash ON contacts(record_hash)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reminder_contacts_reminder ON reminder_contacts(reminder_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reminder_contacts_contact ON reminder_contacts(contact_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_note_contacts_note ON note_contacts(note_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_note_contacts_contact ON note_contacts(contact_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reminders_hash ON reminders(record_hash)")
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_emails_contact_id ON emails(contact_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_emails_email_lower ON emails(lower(email))"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_phones_contact_id ON phones(contact_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_phones_number ON phones(phone_number)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_name "
+        "ON contacts(first_name, last_name)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_job_title ON contacts(job_title)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_hash ON contacts(record_hash)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reminder_contacts_reminder "
+        "ON reminder_contacts(reminder_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reminder_contacts_contact "
+        "ON reminder_contacts(contact_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_note_contacts_note ON note_contacts(note_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_note_contacts_contact "
+        "ON note_contacts(contact_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_reminders_hash ON reminders(record_hash)"
+    )
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_hash ON notes(record_hash)")
 
     conn.commit()

@@ -376,8 +376,8 @@ def merge_cluster(
     placeholders = ",".join(["?"] * len(contact_ids))
     # Fetch only needed columns instead of SELECT *
     cursor.execute(
-        f"""SELECT id, first_name, last_name, job_title, linkedin, website, full_data 
-           FROM contacts WHERE id IN ({placeholders})""",
+        "SELECT id, first_name, last_name, job_title, linkedin, website, full_data "
+        f"FROM contacts WHERE id IN ({placeholders})",
         contact_ids,
     )
     rows = cursor.fetchall()

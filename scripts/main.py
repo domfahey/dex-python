@@ -65,12 +65,25 @@ def init_db(cursor: sqlite3.Cursor) -> None:
     """)
 
     # Create indexes for performance optimization
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_emails_contact_id ON emails(contact_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_emails_email_lower ON emails(lower(email))")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_phones_contact_id ON phones(contact_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_phones_number ON phones(phone_number)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(first_name, last_name)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_contacts_job_title ON contacts(job_title)")
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_emails_contact_id ON emails(contact_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_emails_email_lower ON emails(lower(email))"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_phones_contact_id ON phones(contact_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_phones_number ON phones(phone_number)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_name "
+        "ON contacts(first_name, last_name)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_job_title ON contacts(job_title)"
+    )
 
 
 def insert_contact_data(cursor: sqlite3.Cursor, contact: dict[str, Any]) -> None:
