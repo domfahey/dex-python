@@ -1,5 +1,5 @@
 - Goal (incl. success criteria):
-  - Improve project docs to reflect recent changes and best practices.
+  - Backfill the changelog using git history and best practices.
 - Constraints/Assumptions:
   - Use repository `Makefile` targets; network is restricted.
 - Key decisions:
@@ -8,17 +8,13 @@
   - Complete.
 - Done:
   - Read `CONTINUITY.md` and refreshed session state.
-  - Updated README, API docs, performance docs, and changelog to match recent changes.
-  - Ran `make check`; all checks passed.
+  - Updated `CHANGELOG.md` to capture recent changes from git history.
 - Now:
-  - Report `make check` results.
+  - Report changelog updates.
 - Next:
   - (none)
 - Open questions (UNCONFIRMED if needed):
   - (none)
 - Working set (files/ids/commands):
   - `CONTINUITY.md`
-  - `README.md`
-  - `docs/api.md`
-  - `docs/PERFORMANCE.md`
   - `CHANGELOG.md`
