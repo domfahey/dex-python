@@ -1,20 +1,19 @@
 - Goal (incl. success criteria):
-  - Backfill the changelog using git history and best practices.
+  - Create a pull request for the current branch.
 - Constraints/Assumptions:
   - Use repository `Makefile` targets; network is restricted.
 - Key decisions:
   - (none)
 - State:
-  - Complete.
+  - In progress.
 - Done:
   - Read `CONTINUITY.md` and refreshed session state.
-  - Updated `CHANGELOG.md` to capture recent changes from git history.
+  - Confirmed user wants a PR created.
 - Now:
-  - Report changelog updates.
+  - Push the branch (if needed) and create PR via `gh`.
 - Next:
-  - (none)
+  - Report PR URL or any blockers.
 - Open questions (UNCONFIRMED if needed):
   - (none)
 - Working set (files/ids/commands):
   - `CONTINUITY.md`
-  - `CHANGELOG.md`
