@@ -334,9 +334,9 @@ as `datetime` are serialized to ISO strings on output.
 | `twitter` | `str \| None` | Twitter/X handle |
 | `instagram` | `str \| None` | Instagram handle |
 | `telegram` | `str \| None` | Telegram handle |
-| `birthday_year` | `int \| None` | Birth year |
-| `last_seen_at` | `str \| datetime \| None` | Last seen timestamp |
-| `next_reminder_at` | `str \| datetime \| None` | Next reminder timestamp |
+| `birthday_year` | `int \| None` | Birth year (validated: 1900 to current year) |
+| `last_seen_at` | `str \| datetime \| None` | Last seen timestamp (ISO 8601) |
+| `next_reminder_at` | `str \| datetime \| None` | Next reminder timestamp (ISO 8601) |
 | `contact_emails` | `dict` | Nested email payload (`{"data": {"email": ...}}`) |
 | `contact_phone_numbers` | `dict` | Nested phone payload (`{"data": {"phone_number": ..., "label": ...}}`) |
 
@@ -375,11 +375,37 @@ as `datetime` are serialized to ISO strings on output.
 - `Reminder.contact_ids` and `Note.contacts` use typed contact references.
 - Response timestamps are returned as ISO strings.
 
+### ReminderCreate
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | `str \| None` | Reminder title |
+| `text` | `str` | Reminder text (required) |
+| `is_complete` | `bool` | Completion status (default: `False`) |
+| `due_at_date` | `str \| None` | Due date (validated: YYYY-MM-DD format) |
+| `reminders_contacts` | `dict` | Contact associations |
+
+### NoteCreate
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `note` | `str` | Note text (required) |
+| `event_time` | `str \| datetime \| None` | Event timestamp (ISO 8601) |
+| `meeting_type` | `Literal["note"]` | Meeting type (only "note" allowed) |
+| `timeline_items_contacts` | `dict` | Contact associations |
+
 ### Pagination Models
 
-- `PaginatedContacts` - Paginated contacts with `has_more` property
-- `PaginatedReminders` - Paginated reminders with `has_more` property
-- `PaginatedNotes` - Paginated notes with `has_more` property
+Pagination models include field constraints:
+- `total`: `int` (must be >= 0)
+- `limit`: `int` (default: 100, range: 1-1000)
+- `offset`: `int` (default: 0, must be >= 0)
+
+| Model | Description |
+|-------|-------------|
+| `PaginatedContacts` | Paginated contacts with `has_more` property |
+| `PaginatedReminders` | Paginated reminders with `has_more` property |
+| `PaginatedNotes` | Paginated notes with `has_more` property |
 
 ---
 

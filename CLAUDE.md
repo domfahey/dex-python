@@ -20,16 +20,25 @@ uv run pytest tests/unit/test_clients.py::test_get_contacts -v
 
 Integration tests are marked `integration` and skipped by default.
 
-## Data Workflow
+## CLI Commands
 
 ```bash
-uv run python main.py
-uv run python sync_with_integrity.py
-uv run python analyze_duplicates.py
-uv run python flag_duplicates.py
-uv run python review_duplicates.py
-uv run python resolve_duplicates.py
+# Sync
+dex sync incremental    # Recommended: preserves dedup metadata
+dex sync full           # Destructive: recreates tables
+
+# Deduplication
+dex duplicate analyze   # Generate duplicate report
+dex duplicate flag      # Flag duplicate candidates
+dex duplicate review    # Interactive review
+dex duplicate resolve   # Merge confirmed duplicates
+
+# Enrichment
+dex enrichment backfill # Parse job titles for company/role
+dex enrichment push     # Push enrichment data to API
 ```
+
+Common options: `--db-path`, `--data-dir`, `--verbose`, `--dry-run`, `--force`
 
 Artifacts are written to `output/` by default (override with `DEX_DATA_DIR`).
 
@@ -37,11 +46,15 @@ Artifacts are written to `output/` by default (override with `DEX_DATA_DIR`).
 
 Dex CRM API client using httpx and pydantic.
 
-- `src/dex_python/config.py` - Settings loaded from `.env` (requires `DEX_API_KEY`)
 - `src/dex_python/client.py` - `DexClient` class with context manager support
+- `src/dex_python/config.py` - Settings loaded from `.env` (requires `DEX_API_KEY`)
+- `src/dex_python/models.py` - Pydantic models with validators and type constraints
 - `src/dex_python/deduplication.py` - Duplicate detection and merging utilities
-- `tests/unit/test_clients.py` - Unit tests with pytest-httpx mocking
-- `tests/integration/test_live_api.py` - Integration tests against live API
+- `src/dex_python/fingerprint.py` - E.164 phone and LinkedIn normalization
+- `src/dex_python/cli/` - Unified CLI using Typer
+- `src/dex_python/db/` - SQLAlchemy ORM models and Alembic migrations
+- `tests/unit/` - Unit tests with pytest-httpx mocking (340+ tests)
+- `tests/integration/` - Integration tests against live API
 
 ## API
 

@@ -58,19 +58,38 @@ with DexClient(max_retries=2, retry_delay=0.5) as client:
         print(contact.id, contact.first_name, contact.last_name)
 ```
 
-## Quick start: SQLite sync (optional)
+## Quick start: CLI
 
-Scripts write contact data to `output/dex_contacts.db` by default (override with
-`DEX_DATA_DIR`):
+The `dex` CLI provides commands for sync, deduplication, and enrichment:
+
+```bash
+# Sync contacts to local SQLite database
+dex sync incremental    # Recommended: preserves dedup metadata
+dex sync full           # Destructive: recreates tables
+
+# Deduplication workflow
+dex duplicate analyze   # Generate duplicate report
+dex duplicate flag      # Flag duplicate candidates
+dex duplicate review    # Interactive review
+dex duplicate resolve   # Merge confirmed duplicates
+
+# Enrichment
+dex enrichment backfill # Parse job titles for company/role
+dex enrichment push     # Push enrichment data to API
+```
+
+Common options: `--db-path`, `--data-dir`, `--verbose`, `--dry-run`, `--force`
+
+## Quick start: Direct script execution (alternative)
+
+Scripts can also be run directly:
 
 ```bash
 uv run python scripts/main.py                # Full refresh (recreates tables)
 uv run python scripts/sync_with_integrity.py # Incremental sync with hashes
 ```
 
-Note: `scripts/sync_with_integrity.py` writes `dex_contacts.db` in the repo root
-by default. If you want other scripts to target that database, set
-`DEX_DATA_DIR=.` when running them.
+Database location defaults to `output/dex_contacts.db` (override with `DEX_DATA_DIR`).
 
 ## Best practices
 
