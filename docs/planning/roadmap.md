@@ -47,7 +47,12 @@ local deduplication workflow. Items are grouped by priority and scope.
     - [x] Phone numbers: Use `phonenumbers` lib for E.164 parsing/formatting.
     - [x] Social URLs: Normalize `linkedin.com/in/foo/` vs `linkedin.com/in/foo` vs `foo`.
 - [x] **Performance:** Add SQL indexes on `duplicate_group_id`, `linkedin`, and `website`.
-- [ ] **Pydantic Hardening:** Model nested response fields, exclude path IDs from update payloads, accept `datetime` inputs with JSON serialization, relax `changes` typing, avoid strict datetime parsing on response models, and consider `extra="forbid"` on request models.
+- [x] **Pydantic Hardening:** Model nested response fields, exclude path IDs from update payloads, accept `datetime` inputs with JSON serialization, relax `changes` typing, avoid strict datetime parsing on response models, and consider `extra="forbid"` on request models.
+    - [x] Added 50 new tests for validation coverage
+    - [x] Field validators for `birthday_year` and `due_at_date`
+    - [x] `Literal["note"]` type for `meeting_type`
+    - [x] Field constraints (`ge=0`, `le=1000`) on pagination models
+    - [x] `__all__` exports and field descriptions
 
 ## Mid Term (Usability and Tooling)
 
