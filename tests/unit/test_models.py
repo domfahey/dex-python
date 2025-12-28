@@ -524,3 +524,327 @@ class TestNoteCreateFactories:
         assert note.event_time == "2025-01-15T10:00:00.000Z"
         assert note.timeline_items_contacts is not None
         assert len(note.timeline_items_contacts["data"]) == 2
+
+
+# =============================================================================
+# Test Coverage Gap Tests - Phase 1
+# =============================================================================
+
+
+class TestStrictModeValidation:
+    """Verify strict=True rejects type coercion."""
+
+    def test_contact_id_rejects_int(self) -> None:
+        """Contact.id should reject int (no coercion to string)."""
+        with pytest.raises(ValidationError):
+            Contact(id=123)  # type: ignore[arg-type]
+
+    def test_contact_first_name_rejects_int(self) -> None:
+        """Contact.first_name should reject int."""
+        with pytest.raises(ValidationError):
+            Contact(id="123", first_name=123)  # type: ignore[arg-type]
+
+    def test_reminder_is_complete_rejects_string(self) -> None:
+        """Reminder.is_complete should reject string "true"."""
+        with pytest.raises(ValidationError):
+            Reminder(id="rem-1", body="Test", is_complete="true")  # type: ignore[arg-type]
+
+    def test_reminder_is_complete_rejects_int(self) -> None:
+        """Reminder.is_complete should reject int 1."""
+        with pytest.raises(ValidationError):
+            Reminder(id="rem-1", body="Test", is_complete=1)  # type: ignore[arg-type]
+
+    def test_contact_create_birthday_year_rejects_string(self) -> None:
+        """ContactCreate.birthday_year should reject string."""
+        with pytest.raises(ValidationError):
+            ContactCreate(birthday_year="1990")  # type: ignore[arg-type]
+
+    def test_pagination_total_rejects_string(self) -> None:
+        """PaginatedContacts.total should reject string."""
+        with pytest.raises(ValidationError):
+            PaginatedContacts(contacts=[], total="100")  # type: ignore[arg-type]
+
+    def test_pagination_limit_rejects_float(self) -> None:
+        """PaginatedContacts.limit should reject float."""
+        with pytest.raises(ValidationError):
+            PaginatedContacts(contacts=[], total=100, limit=10.5)  # type: ignore[arg-type]
+
+
+class TestRequiredFieldValidation:
+    """Verify required fields raise ValidationError when missing."""
+
+    def test_contact_requires_id(self) -> None:
+        """Contact must have id field."""
+        with pytest.raises(ValidationError) as exc_info:
+            Contact()  # type: ignore[call-arg]
+        assert "id" in str(exc_info.value)
+
+    def test_reminder_requires_id(self) -> None:
+        """Reminder must have id field."""
+        with pytest.raises(ValidationError) as exc_info:
+            Reminder(body="Test")  # type: ignore[call-arg]
+        assert "id" in str(exc_info.value)
+
+    def test_reminder_requires_body(self) -> None:
+        """Reminder must have body field."""
+        with pytest.raises(ValidationError) as exc_info:
+            Reminder(id="rem-1")  # type: ignore[call-arg]
+        assert "body" in str(exc_info.value)
+
+    def test_note_requires_id(self) -> None:
+        """Note must have id field."""
+        with pytest.raises(ValidationError) as exc_info:
+            Note(note="Test")  # type: ignore[call-arg]
+        assert "id" in str(exc_info.value)
+
+    def test_note_requires_note(self) -> None:
+        """Note must have note field."""
+        with pytest.raises(ValidationError) as exc_info:
+            Note(id="note-1")  # type: ignore[call-arg]
+        assert "note" in str(exc_info.value)
+
+    def test_note_contact_requires_contact_id(self) -> None:
+        """NoteContact must have contact_id field."""
+        with pytest.raises(ValidationError):
+            NoteContact()  # type: ignore[call-arg]
+
+    def test_reminder_create_requires_text(self) -> None:
+        """ReminderCreate must have text field."""
+        with pytest.raises(ValidationError) as exc_info:
+            ReminderCreate()  # type: ignore[call-arg]
+        assert "text" in str(exc_info.value)
+
+    def test_note_create_requires_note(self) -> None:
+        """NoteCreate must have note field."""
+        with pytest.raises(ValidationError) as exc_info:
+            NoteCreate()  # type: ignore[call-arg]
+        assert "note" in str(exc_info.value)
+
+    def test_contact_update_requires_contact_id(self) -> None:
+        """ContactUpdate must have contact_id field."""
+        with pytest.raises(ValidationError) as exc_info:
+            ContactUpdate(changes={"first_name": "Test"})  # type: ignore[call-arg]
+        assert "contact" in str(exc_info.value).lower()
+
+    def test_reminder_update_requires_reminder_id(self) -> None:
+        """ReminderUpdate must have reminder_id field."""
+        with pytest.raises(ValidationError) as exc_info:
+            ReminderUpdate(changes={"text": "Test"})  # type: ignore[call-arg]
+        assert "reminder_id" in str(exc_info.value)
+
+    def test_note_update_requires_note_id(self) -> None:
+        """NoteUpdate must have note_id field."""
+        with pytest.raises(ValidationError) as exc_info:
+            NoteUpdate(changes={"note": "Test"})  # type: ignore[call-arg]
+        assert "note_id" in str(exc_info.value)
+
+
+class TestNestedObjectValidation:
+    """Verify nested objects are validated strictly."""
+
+    def test_contact_emails_rejects_invalid_dict(self) -> None:
+        """Contact.emails should reject dict without 'email' key."""
+        with pytest.raises(ValidationError):
+            Contact(id="123", emails=[{"wrong_key": "value"}])
+
+    def test_contact_phones_rejects_invalid_dict(self) -> None:
+        """Contact.phones should reject dict without 'phone_number' key."""
+        with pytest.raises(ValidationError):
+            Contact(id="123", phones=[{"wrong_key": "value"}])
+
+    def test_reminder_contact_ids_rejects_string_in_list(self) -> None:
+        """Reminder.contact_ids should reject plain strings in list."""
+        with pytest.raises(ValidationError):
+            Reminder(id="rem-1", body="Test", contact_ids=["c1"])  # type: ignore[list-item]
+
+    def test_note_contacts_rejects_invalid_dict(self) -> None:
+        """Note.contacts should reject dict without 'contact_id' key."""
+        with pytest.raises(ValidationError):
+            Note(id="note-1", note="Test", contacts=[{"wrong": "value"}])
+
+    def test_contact_emails_rejects_string_list(self) -> None:
+        """Contact.emails should reject list of strings."""
+        with pytest.raises(ValidationError):
+            Contact(id="123", emails=["test@example.com"])  # type: ignore[list-item]
+
+    def test_contact_phones_rejects_string_list(self) -> None:
+        """Contact.phones should reject list of phone strings."""
+        with pytest.raises(ValidationError):
+            Contact(id="123", phones=["555-1234"])  # type: ignore[list-item]
+
+    def test_contact_update_emails_rejects_invalid_nested(self) -> None:
+        """ContactUpdate.contact_emails should reject invalid ContactEmail."""
+        with pytest.raises(ValidationError):
+            ContactUpdate(
+                contact_id="123",
+                update_contact_emails=True,
+                contact_emails=[{"wrong_field": "value"}],  # type: ignore[list-item]
+            )
+
+
+class TestContactUpdateAlias:
+    """Test populate_by_name on ContactUpdate."""
+
+    def test_contact_update_accepts_contact_id(self) -> None:
+        """ContactUpdate should accept contact_id (Python-style)."""
+        update = ContactUpdate(contact_id="c-123", changes={"first_name": "Test"})
+        assert update.contact_id == "c-123"
+
+    def test_contact_update_accepts_contact_id_alias(self) -> None:
+        """ContactUpdate should accept contactId (API-style alias)."""
+        update = ContactUpdate(contactId="c-123", changes={"first_name": "Test"})  # type: ignore[call-arg]
+        assert update.contact_id == "c-123"
+
+    def test_contact_update_model_dump_by_alias(self) -> None:
+        """model_dump(by_alias=True) should output contactId."""
+        update = ContactUpdate(contact_id="c-123", changes={})
+        data = update.model_dump(by_alias=True)
+        assert "contactId" in data
+        assert data["contactId"] == "c-123"
+
+    def test_contact_update_model_dump_without_alias(self) -> None:
+        """model_dump() without by_alias should output contact_id."""
+        update = ContactUpdate(contact_id="c-123", changes={})
+        data = update.model_dump()
+        assert "contact_id" in data
+        assert data["contact_id"] == "c-123"
+
+
+class TestPaginationEdgeCases:
+    """Test pagination boundary conditions."""
+
+    def test_empty_pagination_has_more_false(self) -> None:
+        """Empty result with total=0 should have has_more=False."""
+        page = PaginatedContacts(contacts=[], total=0, limit=100, offset=0)
+        assert page.has_more is False
+
+    def test_offset_equals_total_has_more_false(self) -> None:
+        """When offset equals total, has_more should be False."""
+        page = PaginatedContacts(contacts=[], total=100, limit=100, offset=100)
+        assert page.has_more is False
+
+    def test_offset_greater_than_total_has_more_false(self) -> None:
+        """When offset > total, has_more should be False."""
+        page = PaginatedContacts(contacts=[], total=50, limit=100, offset=100)
+        assert page.has_more is False
+
+    def test_last_page_exact_has_more_false(self) -> None:
+        """Last page with exact count should have has_more=False."""
+        page = PaginatedContacts(
+            contacts=[{"id": "1"}, {"id": "2"}],
+            total=10,
+            limit=2,
+            offset=8,
+        )
+        assert page.has_more is False
+
+    def test_last_page_partial_has_more_false(self) -> None:
+        """Partial last page should have has_more=False."""
+        page = PaginatedContacts(
+            contacts=[{"id": "1"}],  # Only 1 result on last page
+            total=11,
+            limit=10,
+            offset=10,
+        )
+        assert page.has_more is False
+
+    def test_negative_total_rejected(self) -> None:
+        """Negative total should be rejected with ge=0 constraint."""
+        with pytest.raises(ValidationError):
+            PaginatedContacts(contacts=[], total=-1)
+
+    def test_pagination_reminders_has_more(self) -> None:
+        """PaginatedReminders.has_more should work correctly."""
+        page = PaginatedReminders(
+            reminders=[{"id": "1"}], total=100, offset=0, limit=10
+        )
+        assert page.has_more is True
+
+    def test_pagination_notes_has_more(self) -> None:
+        """PaginatedNotes.has_more should work correctly."""
+        page = PaginatedNotes(notes=[{"id": "1"}], total=1, offset=0, limit=10)
+        assert page.has_more is False
+
+
+class TestUnionTypeEdgeCases:
+    """Test union type fields (str | datetime | None)."""
+
+    def test_contact_create_last_seen_at_accepts_none(self) -> None:
+        """ContactCreate.last_seen_at should accept None."""
+        contact = ContactCreate(first_name="Test", last_seen_at=None)
+        assert contact.last_seen_at is None
+
+    def test_contact_create_last_seen_at_accepts_empty_string(self) -> None:
+        """ContactCreate.last_seen_at should accept empty string."""
+        contact = ContactCreate(first_name="Test", last_seen_at="")
+        assert contact.last_seen_at == ""
+
+    def test_contact_create_datetime_with_timezone(self) -> None:
+        """ContactCreate should accept timezone-aware datetime."""
+        from datetime import timezone
+
+        dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        contact = ContactCreate(first_name="Test", last_seen_at=dt)
+        data = contact.model_dump(mode="json", exclude_none=True)
+        assert data["last_seen_at"] == "2025-01-15T10:30:00+00:00"
+
+    def test_note_create_event_time_with_microseconds(self) -> None:
+        """NoteCreate should preserve datetime microseconds."""
+        dt = datetime(2025, 1, 15, 10, 30, 0, 123456)
+        note = NoteCreate(note="Test", event_time=dt)
+        data = note.model_dump(mode="json")
+        assert "123456" in data["event_time"]
+
+    def test_contact_create_timestamp_rejects_int(self) -> None:
+        """ContactCreate timestamp fields should reject int (Unix timestamp)."""
+        with pytest.raises(ValidationError):
+            ContactCreate(first_name="Test", last_seen_at=1705312200)  # type: ignore[arg-type]
+
+    def test_note_create_event_time_rejects_float(self) -> None:
+        """NoteCreate.event_time should reject float timestamp."""
+        with pytest.raises(ValidationError):
+            NoteCreate(note="Test", event_time=1705312200.0)  # type: ignore[arg-type]
+
+
+# =============================================================================
+# Phase 2: Field Validator Tests (TDD - RED then GREEN)
+# =============================================================================
+
+
+class TestFieldValidators:
+    """Test field validators for request models."""
+
+    def test_reminder_create_valid_date_format(self) -> None:
+        """ReminderCreate accepts valid YYYY-MM-DD format."""
+        reminder = ReminderCreate(text="Test", due_at_date="2025-01-15")
+        assert reminder.due_at_date == "2025-01-15"
+
+    def test_reminder_create_rejects_invalid_date_format(self) -> None:
+        """ReminderCreate rejects non-YYYY-MM-DD format."""
+        with pytest.raises(ValidationError):
+            ReminderCreate(text="Test", due_at_date="01/15/2025")
+
+    def test_reminder_create_rejects_invalid_date_string(self) -> None:
+        """ReminderCreate rejects malformed date string."""
+        with pytest.raises(ValidationError):
+            ReminderCreate(text="Test", due_at_date="not-a-date")
+
+    def test_contact_create_valid_birthday_year(self) -> None:
+        """ContactCreate accepts valid birthday year."""
+        contact = ContactCreate(first_name="Test", birthday_year=1990)
+        assert contact.birthday_year == 1990
+
+    def test_contact_create_rejects_ancient_birthday_year(self) -> None:
+        """ContactCreate rejects year before 1900."""
+        with pytest.raises(ValidationError):
+            ContactCreate(first_name="Test", birthday_year=1850)
+
+    def test_contact_create_rejects_future_birthday_year(self) -> None:
+        """ContactCreate rejects future year."""
+        with pytest.raises(ValidationError):
+            ContactCreate(first_name="Test", birthday_year=2100)
+
+    def test_contact_create_accepts_none_birthday_year(self) -> None:
+        """ContactCreate accepts None for birthday_year."""
+        contact = ContactCreate(first_name="Test", birthday_year=None)
+        assert contact.birthday_year is None

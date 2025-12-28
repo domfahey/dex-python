@@ -14,10 +14,42 @@ Example:
     >>> new_contact = ContactCreate.with_email("user@example.com", first_name="John")
 """
 
+import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+__all__ = [
+    # Contact models
+    "Contact",
+    "ContactCreate",
+    "ContactEmail",
+    "ContactEmailResponse",
+    "ContactPhone",
+    "ContactPhoneResponse",
+    "ContactUpdate",
+    # Reminder models
+    "Reminder",
+    "ReminderContact",
+    "ReminderCreate",
+    "ReminderUpdate",
+    # Note models
+    "Note",
+    "NoteContact",
+    "NoteCreate",
+    "NoteUpdate",
+    # Pagination
+    "PaginatedContacts",
+    "PaginatedNotes",
+    "PaginatedReminders",
+    # Extractors
+    "extract_contacts_total",
+    "extract_reminders_total",
+    "extract_contact_entity",
+    "extract_reminder_entity",
+    "extract_note_entity",
+]
 
 # =============================================================================
 # Contact Models
@@ -170,9 +202,17 @@ class ContactCreate(BaseModel):
     telegram: str | None = None
 
     # Timestamps (accept datetime or str, serialize to ISO string)
-    birthday_year: int | None = None
-    last_seen_at: str | datetime | None = None
-    next_reminder_at: str | datetime | None = None
+    birthday_year: int | None = Field(
+        default=None, description="Birth year (1900 to current year)"
+    )
+    last_seen_at: str | datetime | None = Field(
+        default=None,
+        description="Last interaction timestamp. ISO 8601 string or datetime object.",
+    )
+    next_reminder_at: str | datetime | None = Field(
+        default=None,
+        description="Next reminder timestamp. ISO 8601 string or datetime object.",
+    )
 
     # Nested format required by API
     contact_emails: dict[str, dict[str, str]] | None = None
@@ -183,6 +223,17 @@ class ContactCreate(BaseModel):
         """Serialize datetime to ISO string for JSON."""
         if isinstance(v, datetime):
             return v.isoformat()
+        return v
+
+    @field_validator("birthday_year")
+    @classmethod
+    def validate_birthday_year(cls, v: int | None) -> int | None:
+        """Validate birthday year is reasonable (1900 to current year)."""
+        if v is None:
+            return v
+        current_year = datetime.now().year
+        if v < 1900 or v > current_year:
+            raise ValueError(f"birthday_year must be between 1900 and {current_year}")
         return v
 
     @classmethod
@@ -327,8 +378,20 @@ class ReminderCreate(BaseModel):
     title: str | None = None
     text: str
     is_complete: bool = False
-    due_at_date: str | None = None
+    due_at_date: str | None = Field(
+        default=None, description="Due date in YYYY-MM-DD format"
+    )
     reminders_contacts: dict[str, list[dict[str, str]]] | None = None
+
+    @field_validator("due_at_date")
+    @classmethod
+    def validate_date_format(cls, v: str | None) -> str | None:
+        """Validate due_at_date is in YYYY-MM-DD format."""
+        if v is None:
+            return v
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+            raise ValueError("due_at_date must be in YYYY-MM-DD format")
+        return v
 
     @classmethod
     def with_contacts(
@@ -445,8 +508,11 @@ class NoteCreate(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
     note: str
-    event_time: str | datetime | None = None
-    meeting_type: str = "note"
+    event_time: str | datetime | None = Field(
+        default=None,
+        description="Event timestamp. ISO 8601 string or datetime object.",
+    )
+    meeting_type: Literal["note"] = "note"
     timeline_items_contacts: dict[str, list[dict[str, str]]] | None = None
 
     @field_serializer("event_time")
@@ -523,9 +589,9 @@ class PaginatedContacts(BaseModel):
     model_config = ConfigDict(strict=True)
 
     contacts: list[dict[str, Any]]
-    total: int
-    limit: int = 100
-    offset: int = 0
+    total: int = Field(ge=0)
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
     @property
     def has_more(self) -> bool:
@@ -546,9 +612,9 @@ class PaginatedReminders(BaseModel):
     model_config = ConfigDict(strict=True)
 
     reminders: list[dict[str, Any]]
-    total: int
-    limit: int = 100
-    offset: int = 0
+    total: int = Field(ge=0)
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
     @property
     def has_more(self) -> bool:
@@ -569,9 +635,9 @@ class PaginatedNotes(BaseModel):
     model_config = ConfigDict(strict=True)
 
     notes: list[dict[str, Any]]
-    total: int
-    limit: int = 100
-    offset: int = 0
+    total: int = Field(ge=0)
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
     @property
     def has_more(self) -> bool:
