@@ -430,9 +430,7 @@ class TestNormalizeLinkedIn:
         """Query parameters are stripped."""
         from dex_python.fingerprint import normalize_linkedin
 
-        result = normalize_linkedin(
-            "https://linkedin.com/in/johndoe?utm_source=email"
-        )
+        result = normalize_linkedin("https://linkedin.com/in/johndoe?utm_source=email")
         assert result == "linkedin.com/in/johndoe"
 
     def test_strips_fragment(self):

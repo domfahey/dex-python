@@ -3,7 +3,6 @@
 TDD tests ensuring SQLAlchemy models produce identical schema to raw SQL.
 """
 
-import pytest
 from sqlalchemy import create_engine, inspect
 
 

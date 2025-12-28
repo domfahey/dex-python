@@ -1,18 +1,20 @@
 - Goal (incl. success criteria):
-  - Register the GitHub repo as the remote for this branch.
+  - Push branch and create a PR.
 - Constraints/Assumptions:
   - Use repository `Makefile` targets; network is restricted.
 - Key decisions:
   - (none)
 - State:
-  - Complete.
+  - Blocked on push timeout.
 - Done:
   - Read `CONTINUITY.md` and refreshed session state.
   - Set `origin` to https://github.com/domfahey/dex-python.git and verified.
+  - Committed continuity ledger update.
+  - Retried push; still timed out.
 - Now:
-  - Report remote update and proceed to PR creation if requested.
+  - Answer whether PR can be created given push timeout; request local push.
 - Next:
-  - (none)
+  - Create PR after successful push.
 - Open questions (UNCONFIRMED if needed):
   - (none)
 - Working set (files/ids/commands):
