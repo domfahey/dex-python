@@ -9,6 +9,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Unified CLI
+- New `dex` command-line interface using Typer
+  - `dex sync incremental` - Incremental sync preserving dedup metadata
+  - `dex sync full` - Full sync (destructive)
+  - `dex duplicate analyze` - Generate duplicate analysis report
+  - `dex duplicate flag` - Flag duplicate candidates
+  - `dex duplicate review` - Interactive duplicate review
+  - `dex duplicate resolve` - Merge confirmed duplicates
+  - `dex enrichment backfill` - Parse job titles for company/role
+  - `dex enrichment push` - Push enrichment data to API
+- Standardized CLI options: `--db-path`, `--data-dir`, `--verbose`, `--dry-run`, `--force`
+- Entry point: `dex = "dex_python.cli:app"`
+
+#### SQLAlchemy + Alembic Migrations
+- SQLAlchemy ORM models matching existing schema (`dex_python.db.models`)
+  - `Contact`, `Email`, `Phone`, `Reminder`, `Note` models
+  - `ReminderContact`, `NoteContact` many-to-many link tables
+  - All indexes defined in model `__table_args__`
+- Alembic migration infrastructure
+  - `render_as_batch=True` for SQLite compatibility
+  - Autogenerate support for schema changes
+  - Initial migration codifying current schema
+- Session management utilities (`dex_python.db.session`)
+
+#### International Phone Normalization (E.164)
+- `normalize_phone_e164()` - Full international phone parsing via `phonenumbers` library
+  - Supports all countries with proper E.164 formatting
+  - `default_region` parameter for numbers without country code
+  - `strict` mode for validation (returns empty for invalid numbers)
+- `format_phone()` - Format phones as E.164, national, or international
+  - National: `(555) 123-4567`
+  - International: `+1 555-123-4567`
+  - E.164: `+15551234567`
+
+#### LinkedIn URL Normalization
+- `normalize_linkedin()` - Canonicalize LinkedIn profile URLs
+  - Handles full URLs, short URLs, and usernames
+  - Strips query parameters, fragments, trailing slashes
+  - Case-insensitive matching
+  - Supports locale subdomains (uk.linkedin.com, m.linkedin.com)
+- `find_linkedin_duplicates()` - Find contacts sharing LinkedIn profiles
+- New deduplication level for social URL matching
+
+#### Performance Indexes
+- `idx_contacts_duplicate_group` - Critical for dedup queries
+- `idx_contacts_linkedin` - LinkedIn URL lookups
+- `idx_contacts_website` - Website URL lookups
+
 #### OpenRefine-Inspired Deduplication
 - `fingerprint.py` module with OpenRefine-style keying functions
   - `fingerprint()` - Normalize, sort tokens, remove punctuation, unicode→ASCII
@@ -24,15 +72,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "(555) 123-4567" now matches "555-123-4567"
 - 44 new unit tests for fingerprinting (TDD approach)
 
+#### Duplicate Review Enhancements
+- 'Open in Dex' option in duplicate review tool for quick web access
+- Smart search term generation for Dex duplicate lookup (uses last name for better specificity)
+
+#### Performance Optimizations
+- Database indexes for deduplication queries
+- Batch operations to eliminate N+1 queries
+- Optimized deduplication helper functions
+
+#### Pydantic Best Practices Audit
+- 50 new test cases for model validation coverage
+  - Strict mode validation (type coercion rejection)
+  - Required field validation
+  - Nested object validation
+  - Alias handling (`populate_by_name`)
+  - Pagination edge cases
+  - Union type edge cases (`str | datetime | None`)
+- Field validators for input validation
+  - `birthday_year`: Validates range 1900 to current year
+  - `due_at_date`: Validates YYYY-MM-DD format
+- Type hardening with `Literal` and `Field` constraints
+  - `meeting_type: Literal["note"]` for NoteCreate
+  - `total: int = Field(ge=0)` on pagination models
+  - `limit: int = Field(default=100, ge=1, le=1000)` on pagination
+  - `offset: int = Field(default=0, ge=0)` on pagination
+- `__all__` export list for all public models and extractors
+- Field descriptions for timestamp and date fields
+
 ### Changed
 - `find_phone_duplicates()` now normalizes phone formats before matching
 - `analyze_duplicates.py` includes Level 1.5b fingerprint analysis in reports
+- Makefile refactored following best practices
+- Improved variable naming in deduplication and sync modules for readability
+- Performance test thresholds loosened to reduce timing variance across environments
+- Request models now forbid unknown fields and accept datetime inputs for timestamps
+- Nested response fields use typed models for emails, phones, and contacts
+
+### Fixed
+- Line length compliance with 88 character limit
+- Linting issues in test files
+- Reminder and note update payloads no longer include path IDs
+- Note event timestamps in responses are treated as ISO strings
 
 ### Dependencies
+- Added `typer>=0.12.0` for unified CLI
+- Added `sqlalchemy>=2.0.0` for ORM models
+- Added `alembic>=1.14.0` for database migrations
+- Added `phonenumbers>=8.13.0` for international phone parsing
 - Added `unidecode>=1.3.0` for unicode→ASCII normalization
 
 ### Documentation
 - Comprehensive docstrings added to all source modules
+- Added `AGENTS.md` and `CONTINUITY.md` for repository guidance and continuity
+- Updated README and API/performance docs for model validation and perf thresholds
+- Clarified performance/indexing rationale in code comments
 
 ## [0.2.0] - 2025-12-21
 

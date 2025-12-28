@@ -102,18 +102,22 @@ def main() -> None:
             # Batch fetch emails and phones to avoid N+1 queries
             placeholders = ",".join(["?"] * len(contact_ids))
             cursor.execute(
-                f"SELECT contact_id, email FROM emails WHERE contact_id IN ({placeholders})",
+                "SELECT contact_id, email FROM emails "
+                f"WHERE contact_id IN ({placeholders})",
                 contact_ids,
             )
+            # Index by contact_id for quick lookup while rendering the table.
             emails_by_contact = {}
             for c_id, email in cursor.fetchall():
                 if email:
                     emails_by_contact.setdefault(c_id, []).append(email)
 
             cursor.execute(
-                f"SELECT contact_id, phone_number FROM phones WHERE contact_id IN ({placeholders})",
+                "SELECT contact_id, phone_number FROM phones "
+                f"WHERE contact_id IN ({placeholders})",
                 contact_ids,
             )
+            # Index by contact_id for quick lookup while rendering the table.
             phones_by_contact = {}
             for c_id, phone in cursor.fetchall():
                 if phone:

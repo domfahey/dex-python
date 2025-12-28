@@ -11,10 +11,11 @@ Python SDK for the [Dex](https://getdex.com) CRM API with sync/async clients, au
 
 - Sync and async clients for the Dex REST API
 - Automatic retry with exponential backoff for rate limits
+- Strict request/response validation with Pydantic models
 - Local SQLite database for offline analysis
 - Contact deduplication with fuzzy matching
 - Job title parsing for company/role extraction
-- Comprehensive test suite with 160+ tests
+- Comprehensive test suite with 230+ tests
 
 ## Installation
 
@@ -169,7 +170,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 - **Style:** [Ruff](https://github.com/astral-sh/ruff) for linting and formatting
 - **Types:** [mypy](https://mypy-lang.org/) with strict mode
-- **Tests:** [pytest](https://pytest.org/) with 160+ tests
+- **Tests:** [pytest](https://pytest.org/) with 230+ tests
 
 ## Security
 

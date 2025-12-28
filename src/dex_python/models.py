@@ -14,10 +14,42 @@ Example:
     >>> new_contact = ContactCreate.with_email("user@example.com", first_name="John")
 """
 
+import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+__all__ = [
+    # Contact models
+    "Contact",
+    "ContactCreate",
+    "ContactEmail",
+    "ContactEmailResponse",
+    "ContactPhone",
+    "ContactPhoneResponse",
+    "ContactUpdate",
+    # Reminder models
+    "Reminder",
+    "ReminderContact",
+    "ReminderCreate",
+    "ReminderUpdate",
+    # Note models
+    "Note",
+    "NoteContact",
+    "NoteCreate",
+    "NoteUpdate",
+    # Pagination
+    "PaginatedContacts",
+    "PaginatedNotes",
+    "PaginatedReminders",
+    # Extractors
+    "extract_contacts_total",
+    "extract_reminders_total",
+    "extract_contact_entity",
+    "extract_reminder_entity",
+    "extract_note_entity",
+]
 
 # =============================================================================
 # Contact Models
@@ -25,7 +57,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ContactEmail(BaseModel):
-    """Email address associated with a contact.
+    """Email address for request payloads (creating/updating contacts).
 
     Attributes:
         email: The email address.
@@ -38,8 +70,22 @@ class ContactEmail(BaseModel):
     contact_id: str | None = None
 
 
+class ContactEmailResponse(BaseModel):
+    """Email address from API response.
+
+    Attributes:
+        email: The email address.
+        contact_id: ID of the associated contact.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    email: str
+    contact_id: str | None = None
+
+
 class ContactPhone(BaseModel):
-    """Phone number associated with a contact.
+    """Phone number for request payloads (creating/updating contacts).
 
     Attributes:
         phone_number: The phone number string.
@@ -51,6 +97,22 @@ class ContactPhone(BaseModel):
 
     phone_number: str
     label: str = "Work"
+    contact_id: str | None = None
+
+
+class ContactPhoneResponse(BaseModel):
+    """Phone number from API response.
+
+    Attributes:
+        phone_number: The phone number string.
+        label: Type label (e.g., "Work", "Mobile", "Home").
+        contact_id: ID of the associated contact.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    phone_number: str
+    label: str | None = None
     contact_id: str | None = None
 
 
@@ -105,9 +167,9 @@ class Contact(BaseModel):
     last_seen_at: str | None = None
     next_reminder_at: str | None = None
 
-    # Nested arrays from API response
-    emails: list[dict[str, str]] = Field(default_factory=list)
-    phones: list[dict[str, str]] = Field(default_factory=list)
+    # Nested arrays from API response (typed models)
+    emails: list[ContactEmailResponse] = Field(default_factory=list)
+    phones: list[ContactPhoneResponse] = Field(default_factory=list)
 
 
 class ContactCreate(BaseModel):
@@ -123,7 +185,7 @@ class ContactCreate(BaseModel):
         ... )
     """
 
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     first_name: str | None = None
     last_name: str | None = None
@@ -139,14 +201,40 @@ class ContactCreate(BaseModel):
     instagram: str | None = None
     telegram: str | None = None
 
-    # Timestamps
-    birthday_year: int | None = None
-    last_seen_at: str | None = None
-    next_reminder_at: str | None = None
+    # Timestamps (accept datetime or str, serialize to ISO string)
+    birthday_year: int | None = Field(
+        default=None, description="Birth year (1900 to current year)"
+    )
+    last_seen_at: str | datetime | None = Field(
+        default=None,
+        description="Last interaction timestamp. ISO 8601 string or datetime object.",
+    )
+    next_reminder_at: str | datetime | None = Field(
+        default=None,
+        description="Next reminder timestamp. ISO 8601 string or datetime object.",
+    )
 
     # Nested format required by API
     contact_emails: dict[str, dict[str, str]] | None = None
     contact_phone_numbers: dict[str, dict[str, str | None]] | None = None
+
+    @field_serializer("last_seen_at", "next_reminder_at")
+    def serialize_timestamps(self, v: str | datetime | None) -> str | None:
+        """Serialize datetime to ISO string for JSON."""
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return v
+
+    @field_validator("birthday_year")
+    @classmethod
+    def validate_birthday_year(cls, v: int | None) -> int | None:
+        """Validate birthday year is reasonable (1900 to current year)."""
+        if v is None:
+            return v
+        current_year = datetime.now().year
+        if v < 1900 or v > current_year:
+            raise ValueError(f"birthday_year must be between 1900 and {current_year}")
+        return v
 
     @classmethod
     def with_email(
@@ -217,10 +305,10 @@ class ContactUpdate(BaseModel):
         contact_phone_numbers: New phone list (only used if above is True).
     """
 
-    model_config = ConfigDict(strict=True, populate_by_name=True)
+    model_config = ConfigDict(strict=True, populate_by_name=True, extra="forbid")
 
     contact_id: str = Field(alias="contactId")
-    changes: dict[str, str | int | None] = Field(default_factory=dict)
+    changes: dict[str, Any] = Field(default_factory=dict)
 
     # Email updates
     update_contact_emails: bool = False
@@ -237,7 +325,7 @@ class ContactUpdate(BaseModel):
 
 
 class ReminderContact(BaseModel):
-    """Contact reference used when linking reminders to contacts.
+    """Contact reference used in reminder responses and requests.
 
     Attributes:
         contact_id: The contact's unique identifier.
@@ -259,7 +347,7 @@ class Reminder(BaseModel):
         is_complete: Whether the reminder has been completed.
         due_at_date: Due date in YYYY-MM-DD format.
         due_at_time: Due time in HH:MM format.
-        contact_ids: List of associated contacts with 'contact_id' key.
+        contact_ids: List of associated contacts (typed).
     """
 
     model_config = ConfigDict(strict=True)
@@ -269,7 +357,7 @@ class Reminder(BaseModel):
     is_complete: bool = False
     due_at_date: str | None = None
     due_at_time: str | None = None
-    contact_ids: list[dict[str, str]] = Field(default_factory=list)
+    contact_ids: list[ReminderContact] = Field(default_factory=list)
 
 
 class ReminderCreate(BaseModel):
@@ -285,13 +373,25 @@ class ReminderCreate(BaseModel):
         ... )
     """
 
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     title: str | None = None
     text: str
     is_complete: bool = False
-    due_at_date: str | None = None
+    due_at_date: str | None = Field(
+        default=None, description="Due date in YYYY-MM-DD format"
+    )
     reminders_contacts: dict[str, list[dict[str, str]]] | None = None
+
+    @field_validator("due_at_date")
+    @classmethod
+    def validate_date_format(cls, v: str | None) -> str | None:
+        """Validate due_at_date is in YYYY-MM-DD format."""
+        if v is None:
+            return v
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+            raise ValueError("due_at_date must be in YYYY-MM-DD format")
+        return v
 
     @classmethod
     def with_contacts(
@@ -326,16 +426,16 @@ class ReminderUpdate(BaseModel):
     Use `mark_complete()` factory for the common completion pattern.
 
     Attributes:
-        reminder_id: ID of the reminder to update.
+        reminder_id: ID of the reminder to update (excluded from payload, used in URL).
         changes: Dictionary of field names to new values.
         update_contacts: Set True to replace associated contacts.
         reminders_contacts: New contact list (only used if update_contacts=True).
     """
 
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
-    reminder_id: str
-    changes: dict[str, str | bool | None] = Field(default_factory=dict)
+    reminder_id: str = Field(exclude=True)
+    changes: dict[str, Any] = Field(default_factory=dict)
     update_contacts: bool = False
     reminders_contacts: list[dict[str, str]] = Field(default_factory=list)
 
@@ -360,6 +460,18 @@ class ReminderUpdate(BaseModel):
 # =============================================================================
 
 
+class NoteContact(BaseModel):
+    """Contact reference in note responses.
+
+    Attributes:
+        contact_id: The contact's unique identifier.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    contact_id: str
+
+
 class Note(BaseModel):
     """Dex note/timeline item entity returned from GET requests.
 
@@ -369,16 +481,16 @@ class Note(BaseModel):
     Attributes:
         id: Unique note identifier.
         note: Note text content.
-        event_time: When the event occurred (for timeline ordering).
-        contacts: List of associated contacts with 'contact_id' key.
+        event_time: When the event occurred (ISO string from API).
+        contacts: List of associated contacts (typed).
     """
 
     model_config = ConfigDict(strict=True)
 
     id: str
     note: str
-    event_time: datetime | None = None
-    contacts: list[dict[str, str]] = Field(default_factory=list)
+    event_time: str | None = None
+    contacts: list[NoteContact] = Field(default_factory=list)
 
 
 class NoteCreate(BaseModel):
@@ -393,19 +505,29 @@ class NoteCreate(BaseModel):
         ... )
     """
 
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     note: str
-    event_time: str | None = None
-    meeting_type: str = "note"
+    event_time: str | datetime | None = Field(
+        default=None,
+        description="Event timestamp. ISO 8601 string or datetime object.",
+    )
+    meeting_type: Literal["note"] = "note"
     timeline_items_contacts: dict[str, list[dict[str, str]]] | None = None
+
+    @field_serializer("event_time")
+    def serialize_event_time(self, v: str | datetime | None) -> str | None:
+        """Serialize datetime to ISO string for JSON."""
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return v
 
     @classmethod
     def with_contacts(
         cls,
         note: str,
         contact_ids: list[str],
-        event_time: str | None = None,
+        event_time: str | datetime | None = None,
     ) -> "NoteCreate":
         """Create a note linked to specific contacts.
 
@@ -430,16 +552,16 @@ class NoteUpdate(BaseModel):
     """Request body for updating a note (PUT /timeline_items/{id}).
 
     Attributes:
-        note_id: ID of the note to update.
+        note_id: ID of the note to update (excluded from payload, used in URL).
         changes: Dictionary of field names to new values.
         update_contacts: Set True to replace associated contacts.
         timeline_items_contacts: New contact list (only used if above is True).
     """
 
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
-    note_id: str
-    changes: dict[str, str | None] = Field(default_factory=dict)
+    note_id: str = Field(exclude=True)
+    changes: dict[str, Any] = Field(default_factory=dict)
     update_contacts: bool = False
     timeline_items_contacts: list[dict[str, str]] = Field(default_factory=list)
 
@@ -467,9 +589,9 @@ class PaginatedContacts(BaseModel):
     model_config = ConfigDict(strict=True)
 
     contacts: list[dict[str, Any]]
-    total: int
-    limit: int = 100
-    offset: int = 0
+    total: int = Field(ge=0)
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
     @property
     def has_more(self) -> bool:
@@ -490,9 +612,9 @@ class PaginatedReminders(BaseModel):
     model_config = ConfigDict(strict=True)
 
     reminders: list[dict[str, Any]]
-    total: int
-    limit: int = 100
-    offset: int = 0
+    total: int = Field(ge=0)
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
     @property
     def has_more(self) -> bool:
@@ -513,9 +635,9 @@ class PaginatedNotes(BaseModel):
     model_config = ConfigDict(strict=True)
 
     notes: list[dict[str, Any]]
-    total: int
-    limit: int = 100
-    offset: int = 0
+    total: int = Field(ge=0)
+    limit: int = Field(default=100, ge=1, le=1000)
+    offset: int = Field(default=0, ge=0)
 
     @property
     def has_more(self) -> bool:

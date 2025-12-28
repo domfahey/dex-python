@@ -4,10 +4,11 @@ This document details the performance optimizations made to the dex-python codeb
 
 ## Summary
 
-We identified and resolved 54+ performance issues across the codebase, resulting in significant improvements:
+We identified and resolved performance bottlenecks across the codebase, resulting in
+measurable improvements:
 
-- **Database queries**: Added 20+ indexes for faster lookups
-- **Batch operations**: 1.4x+ speedup using `executemany`
+- **Database queries**: Added indexes for frequently queried columns
+- **Batch operations**: >=1.1x speedup target in unit tests using `executemany`
 - **Algorithm optimization**: Eliminated O(n²) patterns where possible
 - **N+1 queries**: Removed inefficient query patterns
 
@@ -70,7 +71,8 @@ results = [
 ]
 ```
 
-**Impact**: Cleaner code with comparable or better performance.
+**Impact**: Cleaner code with comparable performance; tests use a lenient threshold
+to reduce timing noise.
 
 ### 3. Graph Building Optimization
 
@@ -119,7 +121,7 @@ if email_data:
     )
 ```
 
-**Impact**: 1.4x+ speedup for batch insert operations.
+**Impact**: >=1.1x speedup threshold in unit tests; actual speedup varies by environment.
 
 ### 5. Eliminate N+1 Queries
 
@@ -158,8 +160,8 @@ cursor.execute(f"SELECT * FROM contacts WHERE id IN ({placeholders})", contact_i
 
 # After
 cursor.execute(
-    f"""SELECT id, first_name, last_name, job_title, linkedin, website, full_data 
-       FROM contacts WHERE id IN ({placeholders})""",
+    "SELECT id, first_name, last_name, job_title, linkedin, website, full_data "
+    f"FROM contacts WHERE id IN ({placeholders})",
     contact_ids
 )
 ```
@@ -200,12 +202,12 @@ We added comprehensive performance tests in `tests/unit/test_performance.py`:
 ✓ test_email_duplicates_performance - <100ms for 1000 contacts
 ✓ test_phone_duplicates_performance - <100ms for 1000 contacts
 ✓ test_cluster_duplicates_optimized - <10ms for clustering
-✓ test_list_comprehension_vs_append - comparable performance
-✓ test_batch_executemany_vs_individual - 1.4x speedup
+✓ test_list_comprehension_vs_append - lenient threshold to reduce timing noise
+✓ test_batch_executemany_vs_individual - >1.1x speedup threshold
 ✓ test_combinations_vs_nested_loops - faster than nested loops
 ```
 
-All 166 unit tests pass, confirming no regressions.
+All unit tests pass in `make check` (234 selected, 5 deselected integration).
 
 ## Not Changed (By Design)
 
