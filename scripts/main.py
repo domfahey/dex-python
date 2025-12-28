@@ -16,7 +16,14 @@ from dex_python.name_parsing import parse_contact_name
 
 
 def init_db(cursor: sqlite3.Cursor) -> None:
-    """Initialize the SQLite database with normalized tables."""
+    """
+    Create and initialize the database schema for contacts, emails, and phones.
+    
+    Drops existing contacts, emails, and phones tables and recreates them with columns for parsed name fields, job/social fields, and a JSON full_data column. Also creates supporting indexes for efficient lookups on emails (including a case-insensitive functional index), phones, and common contact queries.
+    
+    Parameters:
+        cursor (sqlite3.Cursor): SQLite cursor used to execute schema and index statements.
+    """
     # Drop existing tables to ensure schema update
     cursor.execute("DROP TABLE IF EXISTS emails")
     cursor.execute("DROP TABLE IF EXISTS phones")
@@ -88,7 +95,19 @@ def init_db(cursor: sqlite3.Cursor) -> None:
 
 
 def insert_contact_data(cursor: sqlite3.Cursor, contact: dict[str, Any]) -> None:
-    """Insert contact and related data into database."""
+    """
+    Insert a single contact and its related email and phone records into the database.
+    
+    Parameters:
+    	cursor (sqlite3.Cursor): SQLite cursor to execute insert statements.
+    	contact (dict): Contact dictionary as returned by the Dex API. Expected keys include:
+    		- "id": contact identifier (used as contacts.id and foreign key for child rows)
+    		- "first_name", "last_name"
+    		- "job_title", "linkedin", "website"
+    		- "emails": iterable of objects with an "email" field
+    		- "phones": iterable of objects with "phone_number" and optional "label" fields
+    	The original contact dict is stored in the contacts.full_data column as JSON.
+    """
     c_id = contact.get("id")
 
     # Insert main contact

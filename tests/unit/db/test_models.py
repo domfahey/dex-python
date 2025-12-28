@@ -3,6 +3,7 @@
 TDD tests ensuring SQLAlchemy models produce identical schema to raw SQL.
 """
 
+import pytest
 from sqlalchemy import create_engine, inspect
 
 
@@ -141,7 +142,11 @@ class TestNoteModel:
     """Test Note SQLAlchemy model."""
 
     def test_notes_table_columns(self):
-        """Note model has expected columns."""
+        """
+        Verify the notes table contains the expected set of column names.
+        
+        Expected columns: "id", "note", "event_time", "full_data", "record_hash", "last_synced_at".
+        """
         from dex_python.db.models import Base
 
         engine = create_engine("sqlite:///:memory:")
@@ -213,7 +218,9 @@ class TestIndexes:
         assert expected.issubset(index_names)
 
     def test_email_indexes_exist(self):
-        """Email table has required indexes."""
+        """
+        Verify the emails table has an index named "idx_emails_contact_id".
+        """
         from dex_python.db.models import Base
 
         engine = create_engine("sqlite:///:memory:")

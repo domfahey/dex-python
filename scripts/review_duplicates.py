@@ -28,6 +28,17 @@ def setup_db(cursor: sqlite3.Cursor) -> None:
 
 
 def main() -> None:
+    """
+    Interactive CLI to review and label duplicate contact groups stored in a local SQLite database.
+    
+    Prompts the user to inspect each unresolved duplicate group, view contact details (including emails and phones), and choose one of: mark a contact as the primary for the group (confirm duplicates), mark the whole group as not duplicates (false positive), open a Dex web search for the inferred name, or quit the session. Updates the database with `duplicate_resolution` and `primary_contact_id` as chosen, opens the default web browser when requested, and prints a session summary on exit.
+    
+    Notes:
+    - Reads the database path from the DEX_DATA_DIR environment variable (defaults to "output/dex_contacts.db").
+    - Ensures required labeling columns exist before starting.
+    - Commits updates to the database for each resolved group and closes the connection on exit.
+    - Gracefully handles user interrupt (KeyboardInterrupt).
+    """
     data_dir = Path(os.getenv("DEX_DATA_DIR", "output"))
     db_path = data_dir / "dex_contacts.db"
     if not db_path.exists():

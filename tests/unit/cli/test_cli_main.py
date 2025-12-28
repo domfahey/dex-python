@@ -6,7 +6,12 @@ from typer.testing import CliRunner
 
 @pytest.fixture
 def runner() -> CliRunner:
-    """CLI test runner."""
+    """
+    Provide a Typer CliRunner for invoking the application's CLI in tests.
+    
+    Returns:
+        CliRunner: An isolated runner instance for executing CLI commands.
+    """
     return CliRunner()
 
 

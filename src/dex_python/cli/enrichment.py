@@ -19,7 +19,18 @@ def backfill(
     db_path: Optional[Path] = typer.Option(None, "--db-path", help="Database path"),
     data_dir: Optional[Path] = typer.Option(None, "--data-dir", help="Data directory"),
 ) -> None:
-    """Parse job titles to extract company and role."""
+    """
+    Backfill company and role fields by parsing job titles in the resolved database.
+    
+    Resolves the database location from `db_path` or `data_dir`, verifies the file exists, and performs a backfill that extracts company and role information from job titles.
+    
+    Parameters:
+        db_path (Optional[Path]): Explicit path to the database file. If omitted, `data_dir` may be used to locate the database.
+        data_dir (Optional[Path]): Directory to search for the database when `db_path` is not provided.
+    
+    Raises:
+        typer.Exit: Exits with code 1 if the resolved database path does not exist.
+    """
     resolved_db = resolve_db_path(db_path, data_dir)
 
     if not resolved_db.exists():
@@ -40,7 +51,18 @@ def push(
     data_dir: Optional[Path] = typer.Option(None, "--data-dir", help="Data directory"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview without API calls"),
 ) -> None:
-    """Push enrichment data back to Dex API."""
+    """
+    Push specified enrichment data from the local database to the Dex API.
+    
+    Parameters:
+        mode (str): Which enrichment field to sync; must be one of "notes", "description", or "job_title".
+        db_path (Optional[Path]): Explicit path to the database (used together with `data_dir` to resolve the DB location).
+        data_dir (Optional[Path]): Directory used to help resolve the database path when `db_path` is not provided.
+        dry_run (bool): If True, print what would be pushed and do not perform any API calls.
+    
+    Raises:
+        typer.Exit: If `mode` is invalid or the resolved database path does not exist.
+    """
     resolved_db = resolve_db_path(db_path, data_dir)
 
     valid_modes = {"notes", "description", "job_title"}
