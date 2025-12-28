@@ -17,6 +17,8 @@ import re
 import string
 
 import jellyfish
+import phonenumbers
+from phonenumbers import NumberParseException, PhoneNumberFormat
 from unidecode import unidecode
 
 
@@ -209,3 +211,151 @@ def ensemble_similarity(
 
     # Weighted combination
     return (jw_weight * jw_score) + (lev_weight * lev_score)
+
+
+def normalize_phone_e164(
+    phone: str | None,
+    default_region: str = "US",
+    strict: bool = False,
+) -> str:
+    """Normalize phone number to E.164 international format.
+
+    Uses Google's libphonenumber for parsing and validation.
+
+    Args:
+        phone: Phone number string in any format.
+        default_region: ISO 3166-1 alpha-2 country code for numbers
+            without country code (default: "US").
+        strict: If True, return empty string for invalid numbers.
+            If False, return best-effort normalization.
+
+    Returns:
+        E.164 formatted phone number (e.g., "+15551234567"),
+        or empty string if input is None/empty/invalid.
+
+    Example:
+        >>> normalize_phone_e164("(555) 123-4567")
+        '+15551234567'
+        >>> normalize_phone_e164("+44 20 7946 0958")
+        '+442079460958'
+    """
+    if phone is None:
+        return ""
+
+    phone = phone.strip()
+    if not phone:
+        return ""
+
+    try:
+        parsed = phonenumbers.parse(phone, default_region)
+
+        if strict and not phonenumbers.is_valid_number(parsed):
+            return ""
+
+        return phonenumbers.format_number(parsed, PhoneNumberFormat.E164)
+    except NumberParseException:
+        if strict:
+            return ""
+        # Fallback to old behavior for unparseable numbers
+        return normalize_phone(phone)
+
+
+def format_phone(
+    phone: str | None,
+    format: str = "e164",
+    default_region: str = "US",
+) -> str:
+    """Format phone number in specified format.
+
+    Args:
+        phone: Phone number string (ideally E.164 format).
+        format: Output format - "e164", "national", "international".
+        default_region: Region for parsing if no country code.
+
+    Returns:
+        Formatted phone number string, or empty if invalid.
+
+    Example:
+        >>> format_phone("+15551234567", format="national")
+        '(555) 123-4567'
+        >>> format_phone("+15551234567", format="international")
+        '+1 555-123-4567'
+    """
+    if phone is None:
+        return ""
+
+    phone = phone.strip()
+    if not phone:
+        return ""
+
+    try:
+        parsed = phonenumbers.parse(phone, default_region)
+
+        format_map = {
+            "e164": PhoneNumberFormat.E164,
+            "national": PhoneNumberFormat.NATIONAL,
+            "international": PhoneNumberFormat.INTERNATIONAL,
+        }
+        fmt = format_map.get(format.lower(), PhoneNumberFormat.E164)
+        return phonenumbers.format_number(parsed, fmt)
+    except NumberParseException:
+        return phone  # Return original if unparseable
+
+
+# LinkedIn URL pattern - matches various URL formats
+_LINKEDIN_PROFILE_RE = re.compile(
+    r"^(?:https?://)?(?:www\.|[a-z]{2}\.)?(?:m\.)?linkedin\.com/(in|company)/([^/?#]+)",
+    re.IGNORECASE,
+)
+
+
+def normalize_linkedin(url: str | None) -> str:
+    """Normalize LinkedIn URL to canonical form for deduplication.
+
+    Handles various input formats:
+    - Full URLs: https://www.linkedin.com/in/johndoe
+    - Short URLs: linkedin.com/in/johndoe
+    - Usernames: johndoe or in/johndoe
+    - Locale variants: uk.linkedin.com, m.linkedin.com
+
+    Args:
+        url: LinkedIn URL or username.
+
+    Returns:
+        Canonical form "linkedin.com/in/{username}" or
+        "linkedin.com/company/{slug}", or empty string if invalid.
+
+    Example:
+        >>> normalize_linkedin("https://www.linkedin.com/in/JohnDoe/")
+        'linkedin.com/in/johndoe'
+        >>> normalize_linkedin("johndoe")
+        'linkedin.com/in/johndoe'
+    """
+    if url is None:
+        return ""
+
+    url = url.strip()
+    if not url:
+        return ""
+
+    # Try to match full URL pattern
+    match = _LINKEDIN_PROFILE_RE.match(url)
+    if match:
+        profile_type = match.group(1).lower()  # "in" or "company"
+        username = match.group(2).lower().rstrip("/")
+        return f"linkedin.com/{profile_type}/{username}"
+
+    # Check for "in/username" format
+    if url.lower().startswith("in/"):
+        username = url[3:].lower().rstrip("/")
+        if username:
+            return f"linkedin.com/in/{username}"
+
+    # Check if it's a bare username (no slashes, no dots except in username)
+    if "/" not in url and "linkedin" not in url.lower():
+        # Avoid treating non-LinkedIn URLs as usernames
+        if "." not in url or url.count(".") == 0:
+            return f"linkedin.com/in/{url.lower()}"
+
+    # Not a valid LinkedIn profile reference
+    return ""

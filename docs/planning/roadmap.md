@@ -36,12 +36,17 @@ local deduplication workflow. Items are grouped by priority and scope.
 
 ## Near Term (Stability and Correctness)
 
-- [ ] **Unified CLI:** Consolidate `scripts/sync_with_integrity.py`, `scripts/flag_duplicates.py`, and `scripts/review_duplicates.py` into a single `dex-python` CLI app using Typer.
-- [ ] **Database Migrations:** Replace ad-hoc `ALTER TABLE` checks with a formal migration tool (e.g., Alembic) to manage `dex_contacts.db` schema evolution.
-- [ ] **Advanced Normalization:**
-    - [ ] Phone numbers: Use `phonenumbers` lib for E.164 parsing/formatting.
-    - [ ] Social URLs: Normalize `linkedin.com/in/foo/` vs `linkedin.com/in/foo` vs `foo`.
-- [ ] **Performance:** Add SQL indexes on `emails.email`, `phones.phone_number`, and `contacts.duplicate_group_id`.
+- [x] **Unified CLI:** Consolidate scripts into a single `dex` CLI app using Typer.
+    - Commands: `dex sync`, `dex duplicate`, `dex enrichment`
+    - Standardized options: `--db-path`, `--data-dir`, `--verbose`, `--dry-run`, `--force`
+- [x] **Database Migrations:** Replace ad-hoc `ALTER TABLE` checks with Alembic.
+    - SQLAlchemy ORM models in `dex_python.db.models`
+    - Alembic with `render_as_batch=True` for SQLite
+    - Autogenerate support for schema changes
+- [x] **Advanced Normalization:**
+    - [x] Phone numbers: Use `phonenumbers` lib for E.164 parsing/formatting.
+    - [x] Social URLs: Normalize `linkedin.com/in/foo/` vs `linkedin.com/in/foo` vs `foo`.
+- [x] **Performance:** Add SQL indexes on `duplicate_group_id`, `linkedin`, and `website`.
 - [ ] **Pydantic Hardening:** Model nested response fields, exclude path IDs from update payloads, accept `datetime` inputs with JSON serialization, relax `changes` typing, avoid strict datetime parsing on response models, and consider `extra="forbid"` on request models.
 
 ## Mid Term (Usability and Tooling)

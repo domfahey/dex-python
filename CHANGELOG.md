@@ -9,6 +9,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Unified CLI
+- New `dex` command-line interface using Typer
+  - `dex sync incremental` - Incremental sync preserving dedup metadata
+  - `dex sync full` - Full sync (destructive)
+  - `dex duplicate analyze` - Generate duplicate analysis report
+  - `dex duplicate flag` - Flag duplicate candidates
+  - `dex duplicate review` - Interactive duplicate review
+  - `dex duplicate resolve` - Merge confirmed duplicates
+  - `dex enrichment backfill` - Parse job titles for company/role
+  - `dex enrichment push` - Push enrichment data to API
+- Standardized CLI options: `--db-path`, `--data-dir`, `--verbose`, `--dry-run`, `--force`
+- Entry point: `dex = "dex_python.cli:app"`
+
+#### SQLAlchemy + Alembic Migrations
+- SQLAlchemy ORM models matching existing schema (`dex_python.db.models`)
+  - `Contact`, `Email`, `Phone`, `Reminder`, `Note` models
+  - `ReminderContact`, `NoteContact` many-to-many link tables
+  - All indexes defined in model `__table_args__`
+- Alembic migration infrastructure
+  - `render_as_batch=True` for SQLite compatibility
+  - Autogenerate support for schema changes
+  - Initial migration codifying current schema
+- Session management utilities (`dex_python.db.session`)
+
+#### International Phone Normalization (E.164)
+- `normalize_phone_e164()` - Full international phone parsing via `phonenumbers` library
+  - Supports all countries with proper E.164 formatting
+  - `default_region` parameter for numbers without country code
+  - `strict` mode for validation (returns empty for invalid numbers)
+- `format_phone()` - Format phones as E.164, national, or international
+  - National: `(555) 123-4567`
+  - International: `+1 555-123-4567`
+  - E.164: `+15551234567`
+
+#### LinkedIn URL Normalization
+- `normalize_linkedin()` - Canonicalize LinkedIn profile URLs
+  - Handles full URLs, short URLs, and usernames
+  - Strips query parameters, fragments, trailing slashes
+  - Case-insensitive matching
+  - Supports locale subdomains (uk.linkedin.com, m.linkedin.com)
+- `find_linkedin_duplicates()` - Find contacts sharing LinkedIn profiles
+- New deduplication level for social URL matching
+
+#### Performance Indexes
+- `idx_contacts_duplicate_group` - Critical for dedup queries
+- `idx_contacts_linkedin` - LinkedIn URL lookups
+- `idx_contacts_website` - Website URL lookups
+
 #### OpenRefine-Inspired Deduplication
 - `fingerprint.py` module with OpenRefine-style keying functions
   - `fingerprint()` - Normalize, sort tokens, remove punctuation, unicode→ASCII
@@ -49,6 +97,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Note event timestamps in responses are treated as ISO strings
 
 ### Dependencies
+- Added `typer>=0.12.0` for unified CLI
+- Added `sqlalchemy>=2.0.0` for ORM models
+- Added `alembic>=1.14.0` for database migrations
+- Added `phonenumbers>=8.13.0` for international phone parsing
 - Added `unidecode>=1.3.0` for unicode→ASCII normalization
 
 ### Documentation

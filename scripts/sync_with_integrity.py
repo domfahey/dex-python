@@ -181,6 +181,18 @@ def init_db(conn: sqlite3.Connection) -> None:
     )
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_notes_hash ON notes(record_hash)")
 
+    # Performance indexes for deduplication queries
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_duplicate_group "
+        "ON contacts(duplicate_group_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_linkedin ON contacts(linkedin)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_contacts_website ON contacts(website)"
+    )
+
     conn.commit()
 
 

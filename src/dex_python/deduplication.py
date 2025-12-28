@@ -26,7 +26,7 @@ from typing import Any
 import jellyfish
 import networkx as nx
 
-from .fingerprint import fingerprint, normalize_phone
+from .fingerprint import fingerprint, normalize_linkedin, normalize_phone
 
 
 def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
@@ -110,6 +110,57 @@ def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
             results.append(
                 {
                     "match_type": "phone",
+                    "match_value": normalized,
+                    "contact_ids": list(contact_ids),
+                }
+            )
+    return results
+
+
+def find_linkedin_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Find groups of contacts sharing the same LinkedIn profile.
+
+    Uses LinkedIn URL normalization to match different formats:
+    - "https://www.linkedin.com/in/johndoe" matches "johndoe"
+    - Case-insensitive matching
+    - Strips query parameters and trailing slashes
+
+    Args:
+        conn: SQLite database connection.
+
+    Returns:
+        List of match dictionaries with 'match_type', 'match_value',
+        and 'contact_ids' keys.
+    """
+    cursor = conn.cursor()
+
+    query = """
+        SELECT id, linkedin
+        FROM contacts
+        WHERE linkedin IS NOT NULL AND linkedin != ''
+    """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+
+    # Group by normalized LinkedIn URL
+    linkedin_groups: dict[str, set[str]] = {}
+
+    for contact_id, linkedin in rows:
+        normalized = normalize_linkedin(linkedin)
+        if not normalized:
+            continue
+
+        if normalized not in linkedin_groups:
+            linkedin_groups[normalized] = set()
+        linkedin_groups[normalized].add(contact_id)
+
+    # Find groups with multiple contacts
+    results = []
+    for normalized, contact_ids in linkedin_groups.items():
+        if len(contact_ids) > 1:
+            results.append(
+                {
+                    "match_type": "linkedin",
                     "match_value": normalized,
                     "contact_ids": list(contact_ids),
                 }
