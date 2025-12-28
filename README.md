@@ -12,10 +12,12 @@ Python SDK for the [Dex](https://getdex.com) CRM API with sync/async clients, au
 - Sync and async clients for the Dex REST API
 - Automatic retry with exponential backoff for rate limits
 - Strict request/response validation with Pydantic models
-- Local SQLite database for offline analysis
-- Contact deduplication with fuzzy matching
+- Unified `dex` CLI for sync, deduplication, and enrichment workflows
+- Local SQLite database with Alembic migrations
+- Contact deduplication with fuzzy matching and LinkedIn/phone normalization
+- E.164 international phone number parsing
 - Job title parsing for company/role extraction
-- Comprehensive test suite with 230+ tests
+- Comprehensive test suite with 340+ tests
 
 ## Installation
 
@@ -74,33 +76,48 @@ except RateLimitError as exc:
     time.sleep(exc.retry_after or 1)
 ```
 
-## SQLite sync
+## CLI
 
-Scripts write contact data to a local SQLite database:
-
-- `scripts/main.py` performs a full refresh and writes to `output/dex_contacts.db`
-  (override with `DEX_DATA_DIR`).
-- `scripts/sync_with_integrity.py` performs incremental syncs with hashes and preserves
-  deduplication metadata. It writes `dex_contacts.db` in the repo root by default.
+The unified `dex` CLI provides commands for sync, deduplication, and enrichment:
 
 ```bash
-make sync                                    # Recommended: incremental sync
-uv run python scripts/sync_with_integrity.py # Direct execution
+dex sync incremental    # Incremental sync preserving dedup metadata
+dex sync full           # Full sync (destructive)
+dex duplicate analyze   # Generate duplicate analysis report
+dex duplicate flag      # Flag duplicate candidates
+dex duplicate review    # Interactive duplicate review
+dex duplicate resolve   # Merge confirmed duplicates
+dex enrichment backfill # Parse job titles for company/role
+dex enrichment push     # Push enrichment data to API
 ```
 
-Note: Most scripts read from `output/dex_contacts.db` via `DEX_DATA_DIR`. If you
-use `scripts/sync_with_integrity.py`, set `DEX_DATA_DIR=.` for the other tools
-or move the database into `output/`.
+Common options: `--db-path`, `--data-dir`, `--verbose`, `--dry-run`, `--force`
+
+## SQLite sync
+
+Scripts write contact data to a local SQLite database with Alembic migrations:
+
+```bash
+dex sync incremental                         # Recommended: CLI command
+make sync                                    # Or via Makefile
+uv run python scripts/sync_with_integrity.py # Direct script execution
+```
+
+Database location defaults to `output/dex_contacts.db` (override with `DEX_DATA_DIR`).
 
 ## Deduplication workflow
 
-1. Sync contacts to SQLite: `make sync`
-2. Generate a report: `make analyze`
-3. Flag candidate groups: `make flag-duplicates`
-4. Review interactively: `uv run python scripts/review_duplicates.py`
-5. Merge confirmed groups: `make resolve-duplicates` (destructive)
+1. Sync contacts: `dex sync incremental`
+2. Generate report: `dex duplicate analyze`
+3. Flag candidates: `dex duplicate flag`
+4. Review interactively: `dex duplicate review`
+5. Merge confirmed: `dex duplicate resolve` (destructive)
 
-Back up the database before merging.
+Back up the database before merging. The deduplication engine supports:
+- Exact matching (email, phone, LinkedIn URL)
+- Composite matching (name + job title)
+- Fuzzy matching (Jaro-Winkler with phonetic blocking)
+- E.164 phone normalization for international numbers
 
 ## Development
 
@@ -170,7 +187,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 - **Style:** [Ruff](https://github.com/astral-sh/ruff) for linting and formatting
 - **Types:** [mypy](https://mypy-lang.org/) with strict mode
-- **Tests:** [pytest](https://pytest.org/) with 230+ tests
+- **Tests:** [pytest](https://pytest.org/) with 340+ tests
 
 ## Security
 
