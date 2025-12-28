@@ -5,6 +5,7 @@ import sqlite3
 from itertools import chain
 from pathlib import Path
 from typing import Any
+import hashlib
 
 from dex_python.deduplication import (
     find_birthday_name_duplicates,
@@ -37,6 +38,20 @@ def get_contact_summary(conn: sqlite3.Connection, contact_id: str) -> dict[str, 
     return {"id": contact_id, "name": "Unknown", "job": "N/A"}
 
 
+def _pseudonymize(value: str) -> str:
+    """Return a pseudonymous representation of a potentially sensitive value.
+
+    This avoids storing raw identifiers or PII in clear text while still
+    allowing consistent comparison within the report.
+    """
+    if value is None:
+        return "N/A"
+    text = str(value)
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
+    prefix = text[:3] if len(text) > 3 else text
+    return f"{prefix}…:{digest}"
+
+
 def write_group_to_file(
     f: Any, conn: sqlite3.Connection, group: dict[str, Any], title: str
 ) -> None:
@@ -46,7 +61,10 @@ def write_group_to_file(
     f.write("|---|---|---|\n")
     for cid in group["contact_ids"]:
         info = get_contact_summary(conn, cid)
-        f.write(f"| `{info['id']}` | {info['name']} | {info['job']} |\n")
+        masked_id = _pseudonymize(info.get("id"))
+        masked_name = _pseudonymize(info.get("name"))
+        masked_job = _pseudonymize(info.get("job"))
+        f.write(f"| `{masked_id}` | {masked_name} | {masked_job} |\n")
     f.write("\n")
 
 
