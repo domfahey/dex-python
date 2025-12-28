@@ -220,7 +220,15 @@ class ContactCreate(BaseModel):
 
     @field_serializer("last_seen_at", "next_reminder_at")
     def serialize_timestamps(self, v: str | datetime | None) -> str | None:
-        """Serialize datetime to ISO string for JSON."""
+        """
+        Serialize a datetime value to an ISO 8601 string, leaving strings and None unchanged.
+        
+        Parameters:
+            v (str | datetime | None): The value to serialize.
+        
+        Returns:
+            str | None: ISO 8601-formatted string if `v` is a `datetime`, otherwise the original `str` or `None`.
+        """
         if isinstance(v, datetime):
             return v.isoformat()
         return v
@@ -228,7 +236,18 @@ class ContactCreate(BaseModel):
     @field_validator("birthday_year")
     @classmethod
     def validate_birthday_year(cls, v: int | None) -> int | None:
-        """Validate birthday year is reasonable (1900 to current year)."""
+        """
+        Ensure the birthday year is between 1900 and the current year.
+        
+        Parameters:
+            v (int | None): The candidate birth year to validate, or None.
+        
+        Returns:
+            int | None: The original year if within range, or None if input was None.
+        
+        Raises:
+            ValueError: If `v` is not between 1900 and the current year.
+        """
         if v is None:
             return v
         current_year = datetime.now().year
@@ -244,16 +263,17 @@ class ContactCreate(BaseModel):
         last_name: str | None = None,
         **kwargs: str | int | None,
     ) -> "ContactCreate":
-        """Create a contact with an email address.
-
-        Args:
-            email: Email address for the contact.
-            first_name: Contact's first name.
-            last_name: Contact's last name.
-            **kwargs: Additional contact fields.
-
+        """
+        Create a ContactCreate payload containing a single email address.
+        
+        Parameters:
+            email (str): Email address to attach to the contact.
+            first_name (str | None): Contact's first name.
+            last_name (str | None): Contact's last name.
+            **kwargs: Additional contact fields to include in the payload.
+        
         Returns:
-            ContactCreate instance ready for API submission.
+            ContactCreate: Payload instance with `contact_emails` populated for API submission.
         """
         return cls(
             first_name=first_name,
@@ -386,7 +406,15 @@ class ReminderCreate(BaseModel):
     @field_validator("due_at_date")
     @classmethod
     def validate_date_format(cls, v: str | None) -> str | None:
-        """Validate due_at_date is in YYYY-MM-DD format."""
+        """
+        Ensure the value is either None or a date string in YYYY-MM-DD format.
+        
+        Returns:
+            The original string when valid, or `None` when the input is `None`.
+        
+        Raises:
+            ValueError: If the string does not match the `YYYY-MM-DD` format.
+        """
         if v is None:
             return v
         if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
@@ -401,16 +429,17 @@ class ReminderCreate(BaseModel):
         due_at_date: str | None = None,
         title: str | None = None,
     ) -> "ReminderCreate":
-        """Create a reminder linked to specific contacts.
-
-        Args:
-            text: Reminder text content.
-            contact_ids: List of contact IDs to associate.
-            due_at_date: Due date in YYYY-MM-DD format.
-            title: Optional reminder title.
-
+        """
+        Create a ReminderCreate instance that links the reminder to the given contacts.
+        
+        Parameters:
+            text (str): Reminder text content.
+            contact_ids (list[str]): Contact IDs to associate with the reminder.
+            due_at_date (str | None): Optional due date in YYYY-MM-DD format.
+            title (str | None): Optional reminder title.
+        
         Returns:
-            ReminderCreate instance ready for API submission.
+            ReminderCreate: Instance with `reminders_contacts` set to link the provided contact IDs.
         """
         return cls(
             title=title,
@@ -517,7 +546,15 @@ class NoteCreate(BaseModel):
 
     @field_serializer("event_time")
     def serialize_event_time(self, v: str | datetime | None) -> str | None:
-        """Serialize datetime to ISO string for JSON."""
+        """
+        Convert an event time value to an ISO 8601 string.
+        
+        Parameters:
+            v (str | datetime | None): The event time value to serialize; may be a datetime, an ISO string, or None.
+        
+        Returns:
+            str | None: ISO 8601 string if `v` is a datetime, the original string if `v` is a string, or `None`.
+        """
         if isinstance(v, datetime):
             return v.isoformat()
         return v
@@ -529,15 +566,16 @@ class NoteCreate(BaseModel):
         contact_ids: list[str],
         event_time: str | datetime | None = None,
     ) -> "NoteCreate":
-        """Create a note linked to specific contacts.
-
-        Args:
-            note: Note text content.
-            contact_ids: List of contact IDs to associate.
-            event_time: ISO timestamp for timeline ordering.
-
+        """
+        Create a note and associate it with the specified contacts.
+        
+        Parameters:
+            note: The note text content.
+            contact_ids: List of contact IDs to associate with the note.
+            event_time: Optional ISO-formatted timestamp (or datetime) to set the note's event time for timeline ordering.
+        
         Returns:
-            NoteCreate instance ready for API submission.
+            NoteCreate: Instance with `timeline_items_contacts` populated to link the provided contacts.
         """
         return cls(
             note=note,
@@ -595,7 +633,12 @@ class PaginatedContacts(BaseModel):
 
     @property
     def has_more(self) -> bool:
-        """Check if there are more results available beyond this page."""
+        """
+        Determine whether additional results exist beyond the current page.
+        
+        Returns:
+            `true` if there are more results after this page, `false` otherwise.
+        """
         return self.offset + len(self.contacts) < self.total
 
 
@@ -618,7 +661,12 @@ class PaginatedReminders(BaseModel):
 
     @property
     def has_more(self) -> bool:
-        """Check if there are more results available beyond this page."""
+        """
+        Indicates whether pagination has additional results after the current page.
+        
+        Returns:
+            `true` if there are more results beyond the current page, `false` otherwise.
+        """
         return self.offset + len(self.reminders) < self.total
 
 
@@ -641,7 +689,12 @@ class PaginatedNotes(BaseModel):
 
     @property
     def has_more(self) -> bool:
-        """Check if there are more results available beyond this page."""
+        """
+        Determines whether there are additional results beyond the current page.
+        
+        Returns:
+            True if there are more results beyond the current page, False otherwise.
+        """
         return self.offset + len(self.notes) < self.total
 
 

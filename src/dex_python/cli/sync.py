@@ -21,7 +21,11 @@ def incremental(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview without changes"),
 ) -> None:
-    """Incremental sync preserving deduplication metadata (recommended)."""
+    """
+    Perform an incremental sync that preserves deduplication metadata.
+    
+    When called with `--dry-run`, print the resolved database path and exit without performing any changes.
+    """
     resolved_db = resolve_db_path(db_path, data_dir)
 
     if dry_run:
@@ -39,7 +43,14 @@ def full(
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ) -> None:
-    """Full sync - WARNING: drops all tables and loses deduplication metadata."""
+    """
+    Perform a full sync to the resolved database path.
+    
+    This operation will drop all tables and remove deduplication metadata; confirmation is required if the target database exists unless `force` is set.
+    
+    Raises:
+        typer.Abort: If the user declines the confirmation prompt.
+    """
     resolved_db = resolve_db_path(db_path)
 
     if resolved_db.exists() and not force:

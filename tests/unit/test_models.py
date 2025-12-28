@@ -44,7 +44,11 @@ class TestNestedResponseFields:
         assert contact.emails[0].contact_id == "123"
 
     def test_contact_phones_typed(self) -> None:
-        """Contact.phones should be list[ContactPhoneResponse]."""
+        """
+        Verify that Contact.phones elements are parsed into ContactPhoneResponse instances.
+        
+        Asserts that a Contact created with dict entries in `phones` produces a list where each item is a ContactPhoneResponse with the expected `phone_number` and `label` values.
+        """
         contact = Contact(
             id="123",
             phones=[{"phone_number": "555-1234", "label": "Work"}],
@@ -714,7 +718,9 @@ class TestPaginationEdgeCases:
     """Test pagination boundary conditions."""
 
     def test_empty_pagination_has_more_false(self) -> None:
-        """Empty result with total=0 should have has_more=False."""
+        """
+        Verify that an empty PaginatedContacts (total=0) reports no additional pages.
+        """
         page = PaginatedContacts(contacts=[], total=0, limit=100, offset=0)
         assert page.has_more is False
 

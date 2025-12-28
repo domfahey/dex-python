@@ -265,21 +265,16 @@ def format_phone(
     format: str = "e164",
     default_region: str = "US",
 ) -> str:
-    """Format phone number in specified format.
-
-    Args:
-        phone: Phone number string (ideally E.164 format).
-        format: Output format - "e164", "national", "international".
-        default_region: Region for parsing if no country code.
-
+    """
+    Format a phone number into E.164, national, or international form.
+    
+    Parameters:
+        phone (str | None): Input phone number; leading/trailing whitespace is ignored.
+        format (str): Desired output format - "e164", "national", or "international" (case-insensitive).
+        default_region (str): Default region to use when parsing numbers without a country code (e.g., "US").
+    
     Returns:
-        Formatted phone number string, or empty if invalid.
-
-    Example:
-        >>> format_phone("+15551234567", format="national")
-        '(555) 123-4567'
-        >>> format_phone("+15551234567", format="international")
-        '+1 555-123-4567'
+        str: Formatted phone number. Returns an empty string for None or blank input. If parsing fails, returns the original input unchanged.
     """
     if phone is None:
         return ""

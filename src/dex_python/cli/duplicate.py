@@ -22,7 +22,13 @@ def analyze(
         None, "--output", "-o", help="Output report path"
     ),
 ) -> None:
-    """Generate duplicate analysis report."""
+    """
+    Generate a duplicate analysis report for the resolved database.
+    
+    If the resolved database path does not exist, exits with status code 1 after printing an error.
+    Parameters:
+        output (Path | None): If provided, path where the analysis report should be written; otherwise the report is printed to stdout.
+    """
     resolved_db = resolve_db_path(db_path, data_dir)
 
     if not resolved_db.exists():
@@ -40,7 +46,14 @@ def flag(
     data_dir: Optional[Path] = typer.Option(None, "--data-dir", help="Data directory"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview without changes"),
 ) -> None:
-    """Flag duplicate candidates without merging."""
+    """
+    Flag candidate duplicate records in the resolved database without performing merges.
+    
+    If `dry_run` is True, print a preview of the actions that would be taken and make no changes.
+    
+    Parameters:
+        dry_run (bool): If True, show which duplicates would be flagged but do not modify the database.
+    """
     resolved_db = resolve_db_path(db_path, data_dir)
 
     if not resolved_db.exists():
@@ -79,7 +92,20 @@ def resolve(
     data_dir: Optional[Path] = typer.Option(None, "--data-dir", help="Data directory"),
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
 ) -> None:
-    """Merge confirmed duplicates (DESTRUCTIVE)."""
+    """
+    Permanently merge confirmed duplicate contacts in the resolved database.
+    
+    Resolves the database path from `db_path` and `data_dir`, prompts for confirmation unless `force` is true, and performs a destructive merge of confirmed duplicates.
+    
+    Parameters:
+        db_path (Optional[Path]): Explicit path to the database; if omitted, the path is resolved from `data_dir`.
+        data_dir (Optional[Path]): Directory used to resolve the database path when `db_path` is not provided.
+        force (bool): If true, skip the interactive confirmation prompt and proceed immediately.
+    
+    Raises:
+        typer.Exit: If the resolved database path does not exist (exits with code 1).
+        typer.Abort: If the user declines the confirmation prompt.
+    """
     resolved_db = resolve_db_path(db_path, data_dir)
 
     if not resolved_db.exists():

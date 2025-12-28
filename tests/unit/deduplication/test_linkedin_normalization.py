@@ -10,7 +10,12 @@ import pytest
 
 @pytest.fixture
 def conn():
-    """Create in-memory SQLite database with test schema."""
+    """
+    Create an in-memory SQLite database initialized with the test contacts schema and index.
+    
+    Returns:
+        sqlite3.Connection: Connection to the in-memory database with the `contacts` table and `idx_contacts_linkedin` index already created and committed.
+    """
     conn = sqlite3.connect(":memory:")
     cursor = conn.cursor()
     cursor.execute("""

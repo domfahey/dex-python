@@ -140,7 +140,11 @@ def test_cluster_duplicates_optimized():
 
 
 def test_list_comprehension_vs_append():
-    """Demonstrate list comprehension is faster than repeated append."""
+    """
+    Compare building a list with a list comprehension versus using repeated append and assert performance and equivalence.
+    
+    Creates a dataset of 10,000 items, constructs one list with a for-loop that appends and another with a list comprehension, then asserts the two results have the same length and that the comprehension's time is no more than 15× the append approach.
+    """
     n = 10000
     data = [(f"type_{i}", f"value_{i}", [f"id_{i}", f"id_{i + 1}"]) for i in range(n)]
 
