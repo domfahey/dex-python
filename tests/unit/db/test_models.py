@@ -3,7 +3,6 @@
 TDD tests ensuring SQLAlchemy models produce identical schema to raw SQL.
 """
 
-import pytest
 from sqlalchemy import create_engine, inspect
 
 
@@ -235,6 +234,7 @@ class TestIndexes:
 
         inspector = inspect(engine)
         indexes = inspector.get_indexes("phones")
+        index_names = {idx["name"] for idx in indexes}
 
         expected = {"idx_phones_contact_id", "idx_phones_number"}
         assert expected.issubset(index_names)
@@ -506,7 +506,7 @@ class TestORMRelationships:
         session.close()
 
     def test_email_label_is_optional(self):
-        """Email label should be optional (phones have labels, emails don't typically)."""
+        """Email label should be optional."""
         from dex_python.db.models import Base, Contact, Email
         from dex_python.db.session import get_engine, get_session
 
@@ -579,9 +579,7 @@ class TestORMRelationships:
         session.commit()
 
         # Query by duplicate group
-        duplicates = (
-            session.query(Contact).filter_by(duplicate_group_id=group_id).all()
-        )
+        duplicates = session.query(Contact).filter_by(duplicate_group_id=group_id).all()
         assert len(duplicates) == 2
         session.close()
 
@@ -610,4 +608,3 @@ class TestORMRelationships:
         assert retrieved.company == "Google"
         assert retrieved.role == "Software Engineer"
         session.close()
-        assert expected.issubset(index_names)

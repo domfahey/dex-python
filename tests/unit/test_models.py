@@ -45,9 +45,7 @@ class TestNestedResponseFields:
 
     def test_contact_phones_typed(self) -> None:
         """
-        Verify that Contact.phones elements are parsed into ContactPhoneResponse instances.
-        
-        Asserts that a Contact created with dict entries in `phones` produces a list where each item is a ContactPhoneResponse with the expected `phone_number` and `label` values.
+        Contact.phones should parse into ContactPhoneResponse instances.
         """
         contact = Contact(
             id="123",

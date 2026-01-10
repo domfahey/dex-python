@@ -267,14 +267,9 @@ def format_phone(
 ) -> str:
     """
     Format a phone number into E.164, national, or international form.
-    
-    Parameters:
-        phone (str | None): Input phone number; leading/trailing whitespace is ignored.
-        format (str): Desired output format - "e164", "national", or "international" (case-insensitive).
-        default_region (str): Default region to use when parsing numbers without a country code (e.g., "US").
-    
-    Returns:
-        str: Formatted phone number. Returns an empty string for None or blank input. If parsing fails, returns the original input unchanged.
+
+    Returns an empty string for blank input and the original input on
+    parse failure.
     """
     if phone is None:
         return ""

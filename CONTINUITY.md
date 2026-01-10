@@ -1,23 +1,20 @@
 - Goal (incl. success criteria):
-  - Push branch and create a PR.
+  - Fix lint/format issues and get `make check` passing.
 - Constraints/Assumptions:
   - Use repository `Makefile` targets; network is restricted.
 - Key decisions:
   - (none)
 - State:
-  - Blocked on push timeout.
+  - In progress.
 - Done:
   - Read `CONTINUITY.md` and refreshed session state.
-  - Set `origin` to https://github.com/domfahey/dex-python.git and verified.
-  - Committed continuity ledger update.
-  - Retried push; still timed out.
+  - Ran `make check`; failed with ruff E501/W293/E101 and test lint errors.
 - Now:
-  - Answer whether PR can be created given push timeout; request local push.
+  - Fix ruff E501/W293/E101 and test lint errors.
 - Next:
-  - Create PR after successful push.
+  - Rerun `make check` and report results.
 - Open questions (UNCONFIRMED if needed):
   - (none)
 - Working set (files/ids/commands):
   - `CONTINUITY.md`
-  - `git remote set-url origin https://github.com/domfahey/dex-python.git`
-  - `git remote -v`
+  - `make check`

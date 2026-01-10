@@ -15,13 +15,7 @@ app = typer.Typer(
 
 def version_callback(value: bool) -> None:
     """
-    Print the CLI version and exit the process when requested.
-    
-    Parameters:
-        value (bool): If True, print the version string "dex-python 0.1.0" and terminate the application.
-    
-    Raises:
-        typer.Exit: Raised to terminate the CLI after printing the version when `value` is True.
+    Print the CLI version and exit if requested.
     """
     if value:
         typer.echo("dex-python 0.1.0")
@@ -40,12 +34,7 @@ def main(
     ),
 ) -> None:
     """
-    Entry point for the Dex CRM command-line interface.
-    
-    When invoked with the version option, prints "dex-python 0.1.0" and exits.
-    
-    Parameters:
-        version (bool): If True, display the CLI version and exit immediately.
+    Entry point for the Dex CLI.
     """
     pass
 

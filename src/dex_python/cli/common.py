@@ -7,15 +7,7 @@ from typing import Optional
 
 def resolve_data_dir(explicit_path: Optional[Path] = None) -> Path:
     """
-    Determine the data directory to use.
-    
-    If `explicit_path` is provided, it is returned; otherwise the `DEX_DATA_DIR` environment variable is used, falling back to "output" when unset.
-    
-    Parameters:
-        explicit_path (Path | None): Optional explicit directory path override.
-    
-    Returns:
-        Path: Resolved data directory path.
+    Resolve the data directory using an explicit override or DEX_DATA_DIR.
     """
     if explicit_path:
         return explicit_path
@@ -27,14 +19,7 @@ def resolve_db_path(
     data_dir: Optional[Path] = None,
 ) -> Path:
     """
-    Determine the database file path using an explicit override or the data directory.
-    
-    Parameters:
-        db_path (Path | None): Explicit database file path override.
-        data_dir (Path | None): Data directory to use when `db_path` is not provided; if omitted, the module's default or environment-configured data directory is used.
-    
-    Returns:
-        Path: Path to the database file — the explicit `db_path` if provided, otherwise `<data_dir>/dex_contacts.db`.
+    Resolve the database path using an explicit override or data dir.
     """
     if db_path:
         return db_path

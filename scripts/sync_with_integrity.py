@@ -31,12 +31,9 @@ console = Console()
 
 def init_db(conn: sqlite3.Connection) -> None:
     """
-    Initialize and migrate the SQLite schema for contacts, derived contact tables (emails, phones), reminders, reminder_contacts, notes, and note_contacts; create necessary indexes and commit the changes.
-    
-    This function is idempotent: it creates missing tables and indexes, attempts to add newer columns to an existing contacts table (ignoring already-present columns), and does a final commit on the provided connection. The created schema includes many-to-many link tables for reminders and notes, derived email/phone tables, hash and last_synced fields for change detection, and performance indexes used for lookups and deduplication.
-    
-    Parameters:
-        conn (sqlite3.Connection): Open SQLite connection to apply the schema and migrations.
+    Initialize and migrate the SQLite schema.
+
+    Creates missing tables/indexes and adds new columns to existing contacts.
     """
     cursor = conn.cursor()
 

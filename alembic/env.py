@@ -25,9 +25,10 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     """
-    Run database migrations in offline mode by emitting SQL migration statements to the configured script output.
-    
-    This obtains the SQLAlchemy URL from the Alembic configuration and executes migrations without creating a DB engine (no DBAPI required). Uses batch rendering to support SQLite ALTER TABLE operations.
+    Run database migrations in offline mode.
+
+    Emits SQL to the script output using the configured URL. Batch rendering
+    is enabled for SQLite ALTER TABLE support.
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -44,9 +45,10 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """
-    Run migrations against a live database using an Engine created from the Alembic configuration.
-    
-    This function creates a SQLAlchemy Engine from the Alembic config, opens a connection, configures the Alembic context with the live connection and module metadata, and executes migrations inside a transaction.
+    Run migrations against a live database.
+
+    Creates an Engine from the Alembic config, opens a connection, configures
+    the context, and runs migrations in a transaction.
     """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),

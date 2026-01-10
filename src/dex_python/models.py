@@ -221,13 +221,7 @@ class ContactCreate(BaseModel):
     @field_serializer("last_seen_at", "next_reminder_at")
     def serialize_timestamps(self, v: str | datetime | None) -> str | None:
         """
-        Serialize a datetime value to an ISO 8601 string, leaving strings and None unchanged.
-        
-        Parameters:
-            v (str | datetime | None): The value to serialize.
-        
-        Returns:
-            str | None: ISO 8601-formatted string if `v` is a `datetime`, otherwise the original `str` or `None`.
+        Serialize datetime values to ISO strings, leaving strings unchanged.
         """
         if isinstance(v, datetime):
             return v.isoformat()
@@ -238,15 +232,6 @@ class ContactCreate(BaseModel):
     def validate_birthday_year(cls, v: int | None) -> int | None:
         """
         Ensure the birthday year is between 1900 and the current year.
-        
-        Parameters:
-            v (int | None): The candidate birth year to validate, or None.
-        
-        Returns:
-            int | None: The original year if within range, or None if input was None.
-        
-        Raises:
-            ValueError: If `v` is not between 1900 and the current year.
         """
         if v is None:
             return v
@@ -265,15 +250,6 @@ class ContactCreate(BaseModel):
     ) -> "ContactCreate":
         """
         Create a ContactCreate payload containing a single email address.
-        
-        Parameters:
-            email (str): Email address to attach to the contact.
-            first_name (str | None): Contact's first name.
-            last_name (str | None): Contact's last name.
-            **kwargs: Additional contact fields to include in the payload.
-        
-        Returns:
-            ContactCreate: Payload instance with `contact_emails` populated for API submission.
         """
         return cls(
             first_name=first_name,
@@ -407,13 +383,7 @@ class ReminderCreate(BaseModel):
     @classmethod
     def validate_date_format(cls, v: str | None) -> str | None:
         """
-        Ensure the value is either None or a date string in YYYY-MM-DD format.
-        
-        Returns:
-            The original string when valid, or `None` when the input is `None`.
-        
-        Raises:
-            ValueError: If the string does not match the `YYYY-MM-DD` format.
+        Ensure the value is either None or YYYY-MM-DD.
         """
         if v is None:
             return v
@@ -430,16 +400,7 @@ class ReminderCreate(BaseModel):
         title: str | None = None,
     ) -> "ReminderCreate":
         """
-        Create a ReminderCreate instance that links the reminder to the given contacts.
-        
-        Parameters:
-            text (str): Reminder text content.
-            contact_ids (list[str]): Contact IDs to associate with the reminder.
-            due_at_date (str | None): Optional due date in YYYY-MM-DD format.
-            title (str | None): Optional reminder title.
-        
-        Returns:
-            ReminderCreate: Instance with `reminders_contacts` set to link the provided contact IDs.
+        Create a reminder linked to the given contacts.
         """
         return cls(
             title=title,
@@ -547,13 +508,7 @@ class NoteCreate(BaseModel):
     @field_serializer("event_time")
     def serialize_event_time(self, v: str | datetime | None) -> str | None:
         """
-        Convert an event time value to an ISO 8601 string.
-        
-        Parameters:
-            v (str | datetime | None): The event time value to serialize; may be a datetime, an ISO string, or None.
-        
-        Returns:
-            str | None: ISO 8601 string if `v` is a datetime, the original string if `v` is a string, or `None`.
+        Convert datetime values to ISO strings, leaving strings unchanged.
         """
         if isinstance(v, datetime):
             return v.isoformat()
@@ -568,14 +523,6 @@ class NoteCreate(BaseModel):
     ) -> "NoteCreate":
         """
         Create a note and associate it with the specified contacts.
-        
-        Parameters:
-            note: The note text content.
-            contact_ids: List of contact IDs to associate with the note.
-            event_time: Optional ISO-formatted timestamp (or datetime) to set the note's event time for timeline ordering.
-        
-        Returns:
-            NoteCreate: Instance with `timeline_items_contacts` populated to link the provided contacts.
         """
         return cls(
             note=note,
@@ -634,10 +581,7 @@ class PaginatedContacts(BaseModel):
     @property
     def has_more(self) -> bool:
         """
-        Determine whether additional results exist beyond the current page.
-        
-        Returns:
-            `true` if there are more results after this page, `false` otherwise.
+        Return True when additional results exist beyond the current page.
         """
         return self.offset + len(self.contacts) < self.total
 
@@ -662,10 +606,7 @@ class PaginatedReminders(BaseModel):
     @property
     def has_more(self) -> bool:
         """
-        Indicates whether pagination has additional results after the current page.
-        
-        Returns:
-            `true` if there are more results beyond the current page, `false` otherwise.
+        Return True when additional results exist beyond the current page.
         """
         return self.offset + len(self.reminders) < self.total
 
@@ -690,10 +631,7 @@ class PaginatedNotes(BaseModel):
     @property
     def has_more(self) -> bool:
         """
-        Determines whether there are additional results beyond the current page.
-        
-        Returns:
-            True if there are more results beyond the current page, False otherwise.
+        Return True when additional results exist beyond the current page.
         """
         return self.offset + len(self.notes) < self.total
 
