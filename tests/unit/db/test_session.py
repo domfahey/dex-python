@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -156,12 +155,12 @@ class TestSessionOperations:
     def test_session_can_query_empty_table(self):
         """Session should be able to query empty tables."""
         from dex_python.db.models import Base, Contact
-        from dex_python.db.session import get_engine, get_session
-
-        engine = get_engine(":memory:")
-        Base.metadata.create_all(engine)
+        from dex_python.db.session import get_session
 
         session = get_session(":memory:")
+        # Create tables on this session's engine (each :memory: is separate)
+        Base.metadata.create_all(session.bind)
+
         # Query should return empty list, not error
         result = session.query(Contact).all()
         assert result == []

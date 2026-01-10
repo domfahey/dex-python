@@ -67,16 +67,17 @@ def find_email_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 def find_phone_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """
     Find contacts that share the same phone number.
-    
-    Phone numbers are normalized before grouping so different formats match (e.g., "(555) 123-4567" and "+1 555-123-4567").
-    
+
+    Phone numbers are normalized before grouping so different formats match
+    (e.g., "(555) 123-4567" and "+1 555-123-4567").
+
     Parameters:
-        conn (sqlite3.Connection): SQLite database connection.
-    
+        conn: SQLite database connection.
+
     Returns:
-        list[dict[str, Any]]: A list of match dictionaries. Each dictionary has
-        'match_type' set to 'phone', 'match_value' containing the normalized phone
-        string, and 'contact_ids' containing a list of contact IDs that share that number.
+        A list of match dictionaries. Each dictionary has 'match_type' set to
+        'phone', 'match_value' containing the normalized phone string, and
+        'contact_ids' containing a list of contact IDs that share that number.
     """
     cursor = conn.cursor()
 
@@ -170,10 +171,12 @@ def find_linkedin_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 def find_birthday_name_duplicates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """
-    Identify contacts that share the same full name and the same birthday month and day.
-    
-    Matches use the lowercased, trimmed first and last name and compare only the MM-DD portion of the birthday; entries with a placeholder birthday starting with "2001-01-01" are ignored.
-    
+    Identify contacts that share the same full name and birthday month/day.
+
+    Matches use the lowercased, trimmed first and last name and compare only
+    the MM-DD portion of the birthday; entries with a placeholder birthday
+    starting with "2001-01-01" are ignored.
+
     Returns:
         A list of dictionaries each containing:
             - 'match_type': the string "birthday_name"
@@ -401,19 +404,10 @@ def merge_cluster(
     conn: sqlite3.Connection, contact_ids: list[str], primary_id: str | None = None
 ) -> str:
     """
-    Merge a set of contacts into a single primary contact record.
-    
-    Consolidates non-empty fields from the provided contacts into a chosen primary record (either the supplied primary_id or the most complete record), reassigns and deduplicates related emails and phone numbers to the primary, deletes the merged duplicate contacts, and commits the changes.
-    
-    Parameters:
-        contact_ids (list[str]): Contact IDs to merge.
-        primary_id (str | None): Optional ID to use as the primary; if omitted, the record with the most non-empty fields is chosen.
-    
-    Returns:
-        str: The ID of the surviving primary contact.
-    
-    Raises:
-        ValueError: If contact_ids is empty, if none of the provided IDs exist, or if a supplied primary_id is not in the given contact_ids.
+    Merge a set of contacts into a single primary record.
+
+    Consolidates non-empty fields into the chosen primary and reassigns
+    related emails and phones.
     """
     if not contact_ids:
         raise ValueError("No contact IDs provided")
@@ -444,13 +438,7 @@ def merge_cluster(
         # Auto-select best primary
         def score_row(row: tuple[Any, ...]) -> int:
             """
-            Compute a completeness score for a database row by counting fields that contain a value.
-            
-            Parameters:
-                row (tuple[Any, ...]): Sequence of fields from a contact record.
-            
-            Returns:
-                int: Number of fields that are neither `None` nor the empty string.
+            Score a row by counting non-empty fields.
             """
             return sum(1 for field in row if field is not None and field != "")
 

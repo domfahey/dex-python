@@ -23,8 +23,9 @@ def incremental(
 ) -> None:
     """
     Perform an incremental sync that preserves deduplication metadata.
-    
-    When called with `--dry-run`, print the resolved database path and exit without performing any changes.
+
+    When called with `--dry-run`, print the resolved database path and exit
+    without performing any changes.
     """
     resolved_db = resolve_db_path(db_path, data_dir)
 
@@ -45,9 +46,11 @@ def full(
 ) -> None:
     """
     Perform a full sync to the resolved database path.
-    
-    This operation will drop all tables and remove deduplication metadata; confirmation is required if the target database exists unless `force` is set.
-    
+
+    This operation will drop all tables and remove deduplication metadata;
+    confirmation is required if the target database exists unless `force`
+    is set.
+
     Raises:
         typer.Abort: If the user declines the confirmation prompt.
     """

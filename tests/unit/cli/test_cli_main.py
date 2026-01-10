@@ -160,7 +160,7 @@ class TestEnrichmentCommandOptions:
 
         result = runner.invoke(app, ["enrichment", "push", "--mode", "invalid"])
         assert result.exit_code == 1
-        assert "Invalid mode" in result.stdout
+        assert "Invalid mode" in result.output  # Error goes to stderr
 
     def test_enrichment_push_with_dry_run(self, runner: CliRunner):
         """enrichment push --dry-run should preview."""

@@ -122,6 +122,11 @@ class Reminder(Base):
     record_hash: Mapped[Optional[str]] = mapped_column(Text)
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # Relationships
+    reminder_contacts: Mapped[list["ReminderContact"]] = relationship(
+        back_populates="reminder", cascade="all, delete-orphan"
+    )
+
     __table_args__ = (Index("idx_reminders_hash", "record_hash"),)
 
 
@@ -136,6 +141,9 @@ class ReminderContact(Base):
     contact_id: Mapped[str] = mapped_column(
         String, ForeignKey("contacts.id", ondelete="CASCADE"), primary_key=True
     )
+
+    # Relationships
+    reminder: Mapped["Reminder"] = relationship(back_populates="reminder_contacts")
 
     __table_args__ = (
         Index("idx_reminder_contacts_reminder", "reminder_id"),
@@ -155,6 +163,11 @@ class Note(Base):
     record_hash: Mapped[Optional[str]] = mapped_column(Text)
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # Relationships
+    note_contacts: Mapped[list["NoteContact"]] = relationship(
+        back_populates="note", cascade="all, delete-orphan"
+    )
+
     __table_args__ = (Index("idx_notes_hash", "record_hash"),)
 
 
@@ -169,6 +182,9 @@ class NoteContact(Base):
     contact_id: Mapped[str] = mapped_column(
         String, ForeignKey("contacts.id", ondelete="CASCADE"), primary_key=True
     )
+
+    # Relationships
+    note: Mapped["Note"] = relationship(back_populates="note_contacts")
 
     __table_args__ = (
         Index("idx_note_contacts_note", "note_id"),
