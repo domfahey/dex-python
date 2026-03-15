@@ -112,7 +112,7 @@ def main() -> None:
     db_path = Path(args.db)
     if not db_path.exists():
         console.print(f"[red]Database not found: {db_path}[/red]")
-        return
+        raise SystemExit(1)
 
     # Parse mode
     mode = SyncBackMode(args.mode)

@@ -22,8 +22,12 @@ Python SDK for the [Dex](https://getdex.com) CRM API with sync/async clients, au
 ## Installation
 
 ```bash
-uv venv && uv sync --all-extras --dev
+make bootstrap
 ```
+
+`make bootstrap` is the recommended first-run setup. It creates or reuses the
+virtual environment, syncs development dependencies, copies `.env.example` to
+`.env` when needed, and creates the default `output/` directory.
 
 ## Configuration
 
@@ -122,13 +126,16 @@ Back up the database before merging. The deduplication engine supports:
 ## Development
 
 ```bash
+make bootstrap        # First-run setup (.venv, .env, output/)
 make install          # Set up environment
 make doctor           # Verify environment and dependencies
+make doctor-api       # Verify live Dex API auth/connectivity
 make test             # Run unit tests (integration excluded by default)
 make test-unit        # Run unit tests only
 make test-integration # Run integration tests (requires API key)
 make lint             # Check code style
 make format           # Auto-fix formatting
+make format-check     # Check formatting without changing files
 make check            # Run non-mutating checks + tests
 make type             # Run type checking
 ```
@@ -159,6 +166,7 @@ make test             # Run all tests (excludes integration by default)
 make test-unit        # Run unit tests only
 make test-integration # Run integration tests (requires DEX_API_KEY)
 make check            # Run format check, lint, type check, and tests
+make resolve-duplicates FORCE=1 # Required for destructive local merges
 ```
 
 ### Test Structure
