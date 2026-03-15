@@ -55,7 +55,7 @@ from dex_python import DexClient
 with DexClient(max_retries=2, retry_delay=0.5) as client:
     contacts = client.get_contacts(limit=5)
     for contact in contacts:
-        print(contact.id, contact.first_name, contact.last_name)
+        print(contact["id"], contact["first_name"], contact["last_name"])
 ```
 
 ## Quick start: CLI
@@ -89,7 +89,9 @@ uv run python scripts/main.py                # Full refresh (recreates tables)
 uv run python scripts/sync_with_integrity.py # Incremental sync with hashes
 ```
 
-Database location defaults to `output/dex_contacts.db` (override with `DEX_DATA_DIR`).
+`scripts/main.py` defaults to `output/dex_contacts.db` (override with `DEX_DATA_DIR`);
+`scripts/sync_with_integrity.py` writes `./dex_contacts.db` in the current working
+directory.
 
 ## Best practices
 

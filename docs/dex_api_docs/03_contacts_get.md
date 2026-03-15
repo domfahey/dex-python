@@ -10,7 +10,7 @@ Fetch a list of contacts.
 GET https://api.getdex.com/api/rest/contacts?limit=2&offset=0
 ```
 
-### Path Parameters
+### Query Parameters
 
 **limit** `string`
 
@@ -116,7 +116,7 @@ Fetches a contact matching with the email provided.
 GET https://api.getdex.com/api/rest/search/contacts?email=user@example.com
 ```
 
-### Path Parameters
+### Query Parameters
 
 **email** `string` **required**
 

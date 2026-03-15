@@ -8,7 +8,7 @@ Fetch all reminders
 GET https://api.getdex.com/api/rest/reminders
 ```
 
-### Path Parameters
+### Query Parameters
 
 **limit** `string`
 
