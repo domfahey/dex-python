@@ -48,6 +48,7 @@ export_*.md
 *.bak
 *.swp
 *.tmp
+.firecrawl/
 
 # OS files
 .DS_Store
