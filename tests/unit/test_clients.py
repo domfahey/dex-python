@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_httpx import HTTPXMock
@@ -12,8 +13,8 @@ from dex_python import (
     ContactCreate,
     ContactUpdate,
     DexClient,
-    NoteUpdate,
     NoteCreate,
+    NoteUpdate,
     ReminderUpdate,
     Settings,
 )
@@ -37,12 +38,19 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_client_uses_correct_headers(
-    client_kind: ClientKind, settings: Settings
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
 ) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/contacts", "limit=100&offset=0"),
+        json={"contacts": []},
+    )
+
     async with client_context(client_kind, settings) as client:
-        headers = client._client.headers
-        assert headers["content-type"] == "application/json"
-        assert headers["x-hasura-dex-api-key"] == "test-api-key"
+        await maybe_await(client.get_contacts())
+
+    request = get_single_request(httpx_mock)
+    assert request.headers["content-type"] == "application/json"
+    assert request.headers["x-hasura-dex-api-key"] == "test-api-key"
 
 
 async def test_get_contacts(
@@ -312,10 +320,16 @@ async def test_delete_contact(
 async def test_context_manager_closes_client(
     client_kind: ClientKind, settings: Settings
 ) -> None:
-    client_ref: DexClient | AsyncDexClient
-    async with client_context(client_kind, settings) as client:
-        client_ref = client
-    assert client_ref._client.is_closed
+    if client_kind == "sync":
+        with patch.object(DexClient, "close") as close_mock:
+            async with client_context(client_kind, settings) as _:
+                pass
+            assert close_mock.call_count == 1
+    else:
+        with patch.object(AsyncDexClient, "close", new=AsyncMock()) as close_mock:
+            async with client_context(client_kind, settings) as _:
+                pass
+            close_mock.assert_awaited_once()
 
 
 async def test_401_raises_authentication_error(

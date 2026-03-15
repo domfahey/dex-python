@@ -494,9 +494,7 @@ class TestPaginatedNotes:
 
     def test_notes_are_typed_models(self) -> None:
         """PaginatedNotes should parse list items as Note models."""
-        response = PaginatedNotes(
-            notes=[{"id": "1", "note": "Note"}], total=1
-        )
+        response = PaginatedNotes(notes=[{"id": "1", "note": "Note"}], total=1)
         assert isinstance(response.notes[0], Note)
 
 
@@ -781,13 +779,21 @@ class TestPaginationEdgeCases:
     def test_pagination_reminders_has_more(self) -> None:
         """PaginatedReminders.has_more should work correctly."""
         page = PaginatedReminders(
-            reminders=[{"id": "1", "body": "Reminder 1"}], total=100, offset=0, limit=10
+            reminders=[{"id": "1", "body": "Reminder 1"}],
+            total=100,
+            offset=0,
+            limit=10,
         )
         assert page.has_more is True
 
     def test_pagination_notes_has_more(self) -> None:
         """PaginatedNotes.has_more should work correctly."""
-        page = PaginatedNotes(notes=[{"id": "1", "note": "Note 1"}], total=1, offset=0, limit=10)
+        page = PaginatedNotes(
+            notes=[{"id": "1", "note": "Note 1"}],
+            total=1,
+            offset=0,
+            limit=10,
+        )
         assert page.has_more is False
 
 
