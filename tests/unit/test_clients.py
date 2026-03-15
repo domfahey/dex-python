@@ -540,6 +540,48 @@ async def test_404_raises_contact_not_found(
             await maybe_await(client.get_contact("invalid-id"))
 
 
+async def test_404_for_contact_search_is_not_contact_not_found_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/contacts/search", "query=missing"),
+        status_code=404,
+        json={"error": "Search endpoint unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError):
+            await maybe_await(client.search_contacts({"query": "missing"}))
+
+
+async def test_404_for_timeline_count_is_not_note_not_found_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline/count"),
+        status_code=404,
+        json={"error": "Count endpoint unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError):
+            await maybe_await(client.count_timeline())
+
+
+async def test_404_for_recurring_reminders_is_not_reminder_not_found_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/reminders/recurring"),
+        status_code=404,
+        json={"error": "Recurring reminders endpoint unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError):
+            await maybe_await(client.get_recurring_reminders())
+
+
 @pytest.mark.parametrize(
     "status_code, error_json, expected_exception",
     [

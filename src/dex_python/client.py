@@ -15,6 +15,7 @@ Environment Variables:
     DEX_BASE_URL: Optional. Defaults to https://api.getdex.com/api/rest
 """
 
+import re
 import time
 from typing import Any, Self, cast
 
@@ -133,17 +134,16 @@ class DexClient:
                 response_data=data,
             )
         elif status_code == 404:
-            if "/contacts/" in endpoint:
+            if re.fullmatch(r"/contacts/[^/]+/?", endpoint):
                 contact_id = endpoint.split("/contacts/")[-1].split("/")[0]
                 raise ContactNotFoundError(contact_id)
-            elif "/reminders/" in endpoint:
+            if re.fullmatch(r"/reminders/[^/]+/?", endpoint):
                 reminder_id = endpoint.split("/reminders/")[-1].split("/")[0]
                 raise ReminderNotFoundError(reminder_id)
-            elif "/timeline_items/" in endpoint or "/timeline/" in endpoint:
-                if "/timeline/" in endpoint:
-                    note_id = endpoint.split("/timeline/")[-1].split("/")[0]
-                else:
-                    note_id = endpoint.split("/timeline_items/")[-1].split("/")[0]
+            if re.fullmatch(r"/timeline/[^/]+/?", endpoint) or re.fullmatch(
+                r"/timeline_items/[^/]+/?", endpoint
+            ):
+                note_id = endpoint.rstrip("/").split("/")[-1]
                 raise NoteNotFoundError(note_id)
             raise DexAPIError("Not found", status_code=404, response_data=data)
         else:
