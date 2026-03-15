@@ -123,6 +123,128 @@ async def test_get_contact_by_email(
     assert contact["id"] == "456"
 
 
+async def test_get_custom_fields(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    mock_response = {
+        "error": False,
+        "data": {
+            "custom_fields": [
+                {
+                    "id": "cf-1",
+                    "name": "Industry",
+                    "field_type": "select",
+                    "categories": [{"category": "Contacts"}],
+                    "ranking": 1,
+                    "created_at": "2025-01-01T00:00:00.000Z",
+                    "updated_at": "2025-01-01T00:00:00.000Z",
+                }
+            ]
+        },
+    }
+    httpx_mock.add_response(
+        url=build_url(settings, "/custom-fields"),
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        custom_fields = await maybe_await(client.get_custom_fields())
+
+    request = get_single_request(httpx_mock)
+    assert request.method == "GET"
+    assert str(request.url) == build_url(settings, "/custom-fields")
+    assert custom_fields == mock_response["data"]["custom_fields"]
+
+
+async def test_get_custom_fields_without_data_wrapper(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    """Support a fallback payload shape without a top-level data wrapper."""
+    mock_response = {
+        "error": False,
+        "custom_fields": [
+            {
+                "id": "cf-2",
+                "name": "Priority",
+                "field_type": "number",
+                "categories": [],
+                "ranking": 2,
+                "created_at": "2025-01-02T00:00:00.000Z",
+                "updated_at": "2025-01-02T00:00:00.000Z",
+            }
+        ],
+    }
+    httpx_mock.add_response(
+        url=build_url(settings, "/custom-fields"),
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        custom_fields = await maybe_await(client.get_custom_fields())
+
+    request = get_single_request(httpx_mock)
+    assert request.method == "GET"
+    assert str(request.url) == build_url(settings, "/custom-fields")
+    assert custom_fields == mock_response["custom_fields"]
+
+
+async def test_get_custom_fields_with_invalid_shape_returns_empty_list(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    """Return [] when the API payload does not provide custom_fields as a list."""
+    httpx_mock.add_response(
+        url=build_url(settings, "/custom-fields"),
+        json={"data": {"custom_fields": {"id": "bad"}}},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        custom_fields = await maybe_await(client.get_custom_fields())
+
+    request = get_single_request(httpx_mock)
+    assert request.method == "GET"
+    assert str(request.url) == build_url(settings, "/custom-fields")
+    assert custom_fields == []
+
+
+async def test_get_custom_fields_falls_back_to_legacy_endpoint(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    mock_response = {
+        "error": False,
+        "data": {
+            "custom_fields": [
+                {
+                    "id": "cf-legacy",
+                    "name": "Legacy field",
+                    "field_type": "text",
+                    "categories": [{"category": "Contacts"}],
+                    "ranking": 1,
+                    "created_at": "2025-01-01T00:00:00.000Z",
+                    "updated_at": "2025-01-01T00:00:00.000Z",
+                }
+            ]
+        },
+    }
+    httpx_mock.add_response(
+        url=build_url(settings, "/custom-fields"),
+        status_code=404,
+        json={"error": "Endpoint moved"},
+    )
+    httpx_mock.add_response(
+        url=build_url(settings, "/v1/custom-fields"),
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        custom_fields = await maybe_await(client.get_custom_fields())
+
+    requests = httpx_mock.get_requests()
+    assert len(requests) == 2
+    assert str(requests[0].url) == build_url(settings, "/custom-fields")
+    assert str(requests[1].url) == build_url(settings, "/v1/custom-fields")
+    assert custom_fields == mock_response["data"]["custom_fields"]
+
+
 async def test_create_contact_sends_expected_body(
     client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
 ) -> None:
@@ -238,7 +360,7 @@ async def test_create_note_with_datetime_event_time_sends_iso(
         }
     }
     httpx_mock.add_response(
-        url=build_url(settings, "/timeline_items"),
+        url=build_url(settings, "/timeline"),
         method="POST",
         json=mock_response,
     )
@@ -248,7 +370,39 @@ async def test_create_note_with_datetime_event_time_sends_iso(
 
     request = get_single_request(httpx_mock)
     payload = json.loads(request.content)["timeline_event"]
+    assert str(request.url) == build_url(settings, "/timeline")
     assert payload["event_time"] == "2025-01-15T10:30:00"
+
+
+async def test_create_note_falls_back_to_legacy_endpoint(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    timestamp = datetime(2025, 1, 15, 10, 30, 0)
+    new_note = NoteCreate(note="Team sync", event_time=timestamp)
+    mock_response = {
+        "insert_timeline_items_one": {
+            "id": "note-2",
+            "note": "Team sync",
+        }
+    }
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline"),
+        status_code=404,
+        json={"error": "Endpoint moved"},
+    )
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline_items"),
+        method="POST",
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        await maybe_await(client.create_note(new_note))
+
+    requests = httpx_mock.get_requests()
+    assert len(requests) == 2
+    assert str(requests[0].url) == build_url(settings, "/timeline")
+    assert str(requests[1].url) == build_url(settings, "/timeline_items")
 
 
 async def test_update_reminder_with_datetime_change_uses_json_dump(
@@ -282,7 +436,7 @@ async def test_update_note_sends_expected_body(
     update = NoteUpdate(note_id="note-456", changes={"note": "Updated note"})
     mock_response = {"update_timeline_items_by_pk": {"id": "note-456"}}
     httpx_mock.add_response(
-        url=build_url(settings, "/timeline_items/note-456"),
+        url=build_url(settings, "/timeline/note-456"),
         method="PUT",
         json=mock_response,
     )
@@ -292,11 +446,37 @@ async def test_update_note_sends_expected_body(
 
     request = get_single_request(httpx_mock)
     assert request.method == "PUT"
-    assert str(request.url) == build_url(settings, "/timeline_items/note-456")
+    assert str(request.url) == build_url(settings, "/timeline/note-456")
     assert json.loads(request.content) == update.model_dump(
         exclude_none=True, mode="json"
     )
     assert result["id"] == "note-456"
+
+
+async def test_update_note_falls_back_to_legacy_endpoint(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    update = NoteUpdate(note_id="note-legacy", changes={"note": "Updated note"})
+    mock_response = {"update_timeline_items_by_pk": {"id": "note-legacy"}}
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline/note-legacy"),
+        status_code=404,
+        json={"error": "Endpoint moved"},
+    )
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline_items/note-legacy"),
+        method="PUT",
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        result = await maybe_await(client.update_note(update))
+
+    requests = httpx_mock.get_requests()
+    assert len(requests) == 2
+    assert str(requests[0].url) == build_url(settings, "/timeline/note-legacy")
+    assert str(requests[1].url) == build_url(settings, "/timeline_items/note-legacy")
+    assert result["id"] == "note-legacy"
 
 
 async def test_delete_contact(
@@ -358,6 +538,48 @@ async def test_404_raises_contact_not_found(
     async with client_context(client_kind, settings) as client:
         with pytest.raises(ContactNotFoundError):
             await maybe_await(client.get_contact("invalid-id"))
+
+
+async def test_404_for_contact_search_is_not_contact_not_found_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/contacts/search", "query=missing"),
+        status_code=404,
+        json={"error": "Search endpoint unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError):
+            await maybe_await(client.search_contacts({"query": "missing"}))
+
+
+async def test_404_for_timeline_count_is_not_note_not_found_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline/count"),
+        status_code=404,
+        json={"error": "Count endpoint unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError):
+            await maybe_await(client.count_timeline())
+
+
+async def test_404_for_recurring_reminders_is_not_reminder_not_found_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/reminders/recurring"),
+        status_code=404,
+        json={"error": "Recurring reminders endpoint unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError):
+            await maybe_await(client.get_recurring_reminders())
 
 
 @pytest.mark.parametrize(
