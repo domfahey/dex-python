@@ -9,8 +9,9 @@ def test_settings_loads_from_env(monkeypatch) -> None:
 
     settings = Settings()
 
-    assert settings.dex_api_key == "test-api-key"
+    assert settings.dex_api_key.get_secret_value() == "test-api-key"
     assert settings.dex_base_url == "https://example.com"
+    assert "test-api-key" not in repr(settings)
 
 
 def test_settings_default_base_url(monkeypatch) -> None:

@@ -428,6 +428,13 @@ class TestPaginatedContacts:
         assert len(response.contacts) == 0
         assert response.total == 0
 
+    def test_contacts_are_typed_models(self) -> None:
+        """PaginatedContacts should parse list items as Contact models."""
+        response = PaginatedContacts(
+            contacts=[{"id": "1", "first_name": "John"}], total=1
+        )
+        assert isinstance(response.contacts[0], Contact)
+
     def test_has_more_property(self) -> None:
         """Test has_more property for pagination."""
         response = PaginatedContacts(
@@ -462,6 +469,13 @@ class TestPaginatedReminders:
         assert len(response.reminders) == 2
         assert response.total == 50
 
+    def test_reminders_are_typed_models(self) -> None:
+        """PaginatedReminders should parse list items as Reminder models."""
+        response = PaginatedReminders(
+            reminders=[{"id": "1", "body": "Reminder"}], total=1
+        )
+        assert isinstance(response.reminders[0], Reminder)
+
 
 class TestPaginatedNotes:
     """Test suite for PaginatedNotes model."""
@@ -477,6 +491,13 @@ class TestPaginatedNotes:
         )
         assert len(response.notes) == 2
         assert response.total == 25
+
+    def test_notes_are_typed_models(self) -> None:
+        """PaginatedNotes should parse list items as Note models."""
+        response = PaginatedNotes(
+            notes=[{"id": "1", "note": "Note"}], total=1
+        )
+        assert isinstance(response.notes[0], Note)
 
 
 class TestContactCreateFactories:
@@ -760,13 +781,13 @@ class TestPaginationEdgeCases:
     def test_pagination_reminders_has_more(self) -> None:
         """PaginatedReminders.has_more should work correctly."""
         page = PaginatedReminders(
-            reminders=[{"id": "1"}], total=100, offset=0, limit=10
+            reminders=[{"id": "1", "body": "Reminder 1"}], total=100, offset=0, limit=10
         )
         assert page.has_more is True
 
     def test_pagination_notes_has_more(self) -> None:
         """PaginatedNotes.has_more should work correctly."""
-        page = PaginatedNotes(notes=[{"id": "1"}], total=1, offset=0, limit=10)
+        page = PaginatedNotes(notes=[{"id": "1", "note": "Note 1"}], total=1, offset=0, limit=10)
         assert page.has_more is False
 
 
@@ -832,6 +853,11 @@ class TestFieldValidators:
         """ReminderCreate rejects malformed date string."""
         with pytest.raises(ValidationError):
             ReminderCreate(text="Test", due_at_date="not-a-date")
+
+    def test_reminder_create_rejects_impossible_date(self) -> None:
+        """ReminderCreate rejects dates that are not valid on the calendar."""
+        with pytest.raises(ValidationError):
+            ReminderCreate(text="Test", due_at_date="2025-02-31")
 
     def test_contact_create_valid_birthday_year(self) -> None:
         """ContactCreate accepts valid birthday year."""

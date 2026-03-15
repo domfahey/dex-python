@@ -14,8 +14,7 @@ Example:
     >>> new_contact = ContactCreate.with_email("user@example.com", first_name="John")
 """
 
-import re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
@@ -218,7 +217,7 @@ class ContactCreate(BaseModel):
     contact_emails: dict[str, dict[str, str]] | None = None
     contact_phone_numbers: dict[str, dict[str, str | None]] | None = None
 
-    @field_serializer("last_seen_at", "next_reminder_at")
+    @field_serializer("last_seen_at", "next_reminder_at", when_used="json")
     def serialize_timestamps(self, v: str | datetime | None) -> str | None:
         """
         Serialize datetime values to ISO strings, leaving strings unchanged.
@@ -387,8 +386,10 @@ class ReminderCreate(BaseModel):
         """
         if v is None:
             return v
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
-            raise ValueError("due_at_date must be in YYYY-MM-DD format")
+        try:
+            date.fromisoformat(v)
+        except ValueError as exc:
+            raise ValueError("due_at_date must be in YYYY-MM-DD format") from exc
         return v
 
     @classmethod
@@ -505,7 +506,7 @@ class NoteCreate(BaseModel):
     meeting_type: Literal["note"] = "note"
     timeline_items_contacts: dict[str, list[dict[str, str]]] | None = None
 
-    @field_serializer("event_time")
+    @field_serializer("event_time", when_used="json")
     def serialize_event_time(self, v: str | datetime | None) -> str | None:
         """
         Convert datetime values to ISO strings, leaving strings unchanged.
@@ -573,7 +574,7 @@ class PaginatedContacts(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    contacts: list[dict[str, Any]]
+    contacts: list[Contact]
     total: int = Field(ge=0)
     limit: int = Field(default=100, ge=1, le=1000)
     offset: int = Field(default=0, ge=0)
@@ -598,7 +599,7 @@ class PaginatedReminders(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    reminders: list[dict[str, Any]]
+    reminders: list[Reminder]
     total: int = Field(ge=0)
     limit: int = Field(default=100, ge=1, le=1000)
     offset: int = Field(default=0, ge=0)
@@ -623,7 +624,7 @@ class PaginatedNotes(BaseModel):
 
     model_config = ConfigDict(strict=True)
 
-    notes: list[dict[str, Any]]
+    notes: list[Note]
     total: int = Field(ge=0)
     limit: int = Field(default=100, ge=1, le=1000)
     offset: int = Field(default=0, ge=0)
