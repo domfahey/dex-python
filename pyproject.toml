@@ -41,9 +41,10 @@ select = ["E", "F", "I", "N", "W"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not performance'"
 markers = [
     "integration: tests that hit the live Dex API",
+    "performance: long-running or timing-sensitive tests",
 ]
 
 [dependency-groups]

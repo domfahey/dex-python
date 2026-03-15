@@ -1,5 +1,6 @@
 """Script to resolve duplicates in the local database by merging them."""
 
+import argparse
 import os
 import sqlite3
 from pathlib import Path
@@ -17,10 +18,23 @@ DATA_DIR = Path(os.getenv("DEX_DATA_DIR", "output"))
 DEFAULT_DB_PATH = DATA_DIR / "dex_contacts.db"
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Merge duplicate contacts in the SQLite database."
+    )
+    parser.add_argument(
+        "--db",
+        default=str(DEFAULT_DB_PATH),
+        help=f"Path to the SQLite database (default: {DEFAULT_DB_PATH})",
+    )
+    return parser.parse_args()
+
+
 def main(db_path: str = str(DEFAULT_DB_PATH)) -> None:
     if not Path(db_path).exists():
         print(f"Error: Database {db_path} not found.")
-        return
+        raise SystemExit(1)
 
     conn = sqlite3.connect(db_path)
 
@@ -71,4 +85,5 @@ def main(db_path: str = str(DEFAULT_DB_PATH)) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args.db)

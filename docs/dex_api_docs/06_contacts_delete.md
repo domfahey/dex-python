@@ -10,6 +10,6 @@ DELETE https://api.getdex.com/api/rest/contacts/{contactId}
 
 ### Path Parameters
 
-**contactID** `string` **required**
+**contactId** `string` **required**
 
 The ID of the contact to be deleted

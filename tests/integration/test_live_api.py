@@ -7,11 +7,25 @@ import pytest
 
 from dex_python import ContactCreate, DexClient
 
+
+def _live_tests_enabled() -> bool:
+    """Gate integration tests behind explicit opt-in.
+
+    This avoids accidental writes against live data stores in normal test runs.
+    """
+    enabled = os.getenv("DEX_RUN_LIVE_TESTS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    return bool(os.getenv("DEX_API_KEY")) and enabled
+
+
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
-        not os.getenv("DEX_API_KEY"),
-        reason="DEX_API_KEY not set - skipping integration tests",
+        not _live_tests_enabled(),
+        reason="Set DEX_RUN_LIVE_TESTS=1 and DEX_API_KEY to run live integration tests",
     ),
 ]
 
@@ -50,11 +64,12 @@ class TestLiveAPI:
                     last_name=f"ToDelete-{suffix}",
                 )
                 result = client.create_contact(new_contact)
-                contact_id = result["insert_contacts_one"]["id"]
+                contact_id = result["id"]
                 assert contact_id is not None
             finally:
                 if contact_id:
-                    client.delete_contact(contact_id)
+                    delete_result = client.delete_contact(contact_id)
+                    assert delete_result["id"] == contact_id
 
     def test_get_reminders(self, live_client: DexClient) -> None:
         """Verify we can fetch reminders."""

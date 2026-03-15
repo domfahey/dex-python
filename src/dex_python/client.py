@@ -89,7 +89,7 @@ class DexClient:
             base_url=self.settings.dex_base_url,
             headers={
                 "Content-Type": "application/json",
-                "x-hasura-dex-api-key": self.settings.dex_api_key,
+                "x-hasura-dex-api-key": self.settings.dex_api_key.get_secret_value(),
             },
             timeout=30.0,
         )
@@ -309,7 +309,7 @@ class DexClient:
         data = self._request(
             "POST",
             "/contacts",
-            json={"contact": contact.model_dump(exclude_none=True)},
+            json={"contact": contact.model_dump(exclude_none=True, mode="json")},
         )
         return dict(extract_contact_entity(data))
 
@@ -325,7 +325,7 @@ class DexClient:
         data = self._request(
             "PUT",
             f"/contacts/{update.contact_id}",
-            json=update.model_dump(exclude_none=True, by_alias=True),
+            json=update.model_dump(exclude_none=True, by_alias=True, mode="json"),
         )
         return dict(extract_contact_entity(data))
 
@@ -404,7 +404,7 @@ class DexClient:
         data = self._request(
             "POST",
             "/reminders",
-            json={"reminder": reminder.model_dump(exclude_none=True)},
+            json={"reminder": reminder.model_dump(exclude_none=True, mode="json")},
         )
         return dict(extract_reminder_entity(data))
 
@@ -421,7 +421,7 @@ class DexClient:
         data = self._request(
             "PUT",
             f"/reminders/{update.reminder_id}",
-            json=update.model_dump(exclude_none=True),
+            json=update.model_dump(exclude_none=True, mode="json"),
         )
         return dict(extract_reminder_entity(data))
 
@@ -511,7 +511,7 @@ class DexClient:
         data = self._request(
             "POST",
             "/timeline_items",
-            json={"timeline_event": note.model_dump(exclude_none=True)},
+            json={"timeline_event": note.model_dump(exclude_none=True, mode="json")},
         )
         return dict(extract_note_entity(data))
 
@@ -527,7 +527,7 @@ class DexClient:
         data = self._request(
             "PUT",
             f"/timeline_items/{update.note_id}",
-            json=update.model_dump(exclude_none=True),
+            json=update.model_dump(exclude_none=True, mode="json"),
         )
         return dict(extract_note_entity(data))
 

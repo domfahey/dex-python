@@ -8,7 +8,7 @@ Fetch all notes
 GET https://api.getdex.com/api/rest/timeline_items?limit=2&offset=0
 ```
 
-### Path Parameters
+### Query Parameters
 
 **limit** `string`
 
@@ -54,4 +54,4 @@ GET https://api.getdex.com/api/rest/timeline_items/contacts/:contactId
 
 ### Path Parameters
 
-**contactID** `string` **required**
+**contactId** `string` **required**

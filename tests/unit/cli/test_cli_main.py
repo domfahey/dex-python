@@ -1,7 +1,16 @@
 """Tests for CLI entry point and version."""
 
+from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
+
+from dex_python.cli import _cli_version
+
+CLI_VERSION = _cli_version()
 
 
 @pytest.fixture
@@ -25,17 +34,50 @@ class TestCLIApp:
 
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        assert "0.1.0" in result.stdout
+        assert CLI_VERSION in result.stdout
 
-    def test_help_shows_command_groups(self, runner: CliRunner):
-        """--help should show all command groups."""
-        from dex_python.cli import app
 
-        result = runner.invoke(app, ["--help"])
-        assert result.exit_code == 0
-        assert "sync" in result.stdout
-        assert "duplicate" in result.stdout
-        assert "enrichment" in result.stdout
+class TestCLIVersionResolution:
+    """Test CLI version discovery behavior."""
+
+    def test_cli_version_reads_local_pyproject(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Fallback version lookup should read the nearest project metadata."""
+        import dex_python.cli as cli_module
+
+        package_root = tmp_path / "repo"
+        cli_dir = package_root / "src" / "dex_python" / "cli"
+        cli_dir.mkdir(parents=True)
+        (package_root / "pyproject.toml").write_text(
+            '[project]\nversion = "9.9.9"\n',
+            encoding="utf-8",
+        )
+
+        def raise_package_not_found(_: str) -> str:
+            raise PackageNotFoundError
+
+        monkeypatch.setattr(cli_module, "package_version", raise_package_not_found)
+        monkeypatch.setattr(cli_module, "__file__", str(cli_dir / "__init__.py"))
+
+        assert cli_module._cli_version() == "9.9.9"
+
+    def test_cli_version_defaults_when_project_metadata_missing(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Fallback should return the baked-in default when no metadata exists."""
+        import dex_python.cli as cli_module
+
+        cli_dir = tmp_path / "src" / "dex_python" / "cli"
+        cli_dir.mkdir(parents=True)
+
+        def raise_package_not_found(_: str) -> str:
+            raise PackageNotFoundError
+
+        monkeypatch.setattr(cli_module, "package_version", raise_package_not_found)
+        monkeypatch.setattr(cli_module, "__file__", str(cli_dir / "__init__.py"))
+
+        assert cli_module._cli_version() == "0.1.0"
 
 
 class TestSyncCommands:
@@ -82,13 +124,22 @@ class TestEnrichmentCommands:
 class TestSyncCommandOptions:
     """Test sync command with various options."""
 
+    def test_help_shows_sync_commands(self, runner: CliRunner):
+        """--help should show sync subcommands."""
+        from dex_python.cli import app
+
+        result = runner.invoke(app, ["sync", "--help"])
+        assert result.exit_code == 0
+        assert "incremental" in result.stdout
+        assert "full" in result.stdout
+
     def test_sync_incremental_with_verbose(self, runner: CliRunner):
         """sync incremental --verbose should accept verbose flag."""
         from dex_python.cli import app
 
         result = runner.invoke(app, ["sync", "incremental", "--verbose"])
-        # Command should run (even if TODO logic isn't implemented)
         assert result.exit_code == 0
+        assert "Starting incremental sync to:" in result.stdout
 
     def test_sync_incremental_with_dry_run(self, runner: CliRunner):
         """sync incremental --dry-run should preview without changes."""
@@ -96,7 +147,7 @@ class TestSyncCommandOptions:
 
         result = runner.invoke(app, ["sync", "incremental", "--dry-run"])
         assert result.exit_code == 0
-        assert "Dry run" in result.stdout or "would sync" in result.stdout
+        assert "Dry run - would sync to:" in result.stdout
 
     def test_sync_full_shows_warning(self, runner: CliRunner):
         """sync full should work when forced."""
@@ -104,35 +155,52 @@ class TestSyncCommandOptions:
 
         result = runner.invoke(app, ["sync", "full", "--force"])
         assert result.exit_code == 0
+        assert "Starting full sync to:" in result.stdout
 
 
 class TestDuplicateCommandOptions:
     """Test duplicate command with various options."""
 
-    def test_duplicate_flag_with_dry_run(self, runner: CliRunner):
+    def test_duplicate_flag_with_dry_run(self, runner: CliRunner, tmp_path: Path):
         """duplicate flag --dry-run should preview without changes."""
         from dex_python.cli import app
 
-        result = runner.invoke(app, ["duplicate", "flag", "--dry-run"])
-        # Should run even without DB (dry run mode)
-        assert result.exit_code in [0, 1]
+        db_path = tmp_path / "existing.db"
+        db_path.touch()
 
-    def test_duplicate_resolve_requires_confirmation(self, runner: CliRunner):
+        result = runner.invoke(
+            app, ["duplicate", "flag", "--dry-run", "--db-path", str(db_path)]
+        )
+        assert result.exit_code == 0
+        assert f"Dry run - would flag duplicates in: {db_path}" in result.stdout
+
+    def test_duplicate_resolve_requires_confirmation(
+        self, runner: CliRunner, tmp_path: Path
+    ):
         """duplicate resolve should require confirmation without --force."""
         from dex_python.cli import app
 
-        # Simulate user declining confirmation
-        result = runner.invoke(app, ["duplicate", "resolve"], input="n\n")
-        # Should abort
-        assert result.exit_code in [0, 1]
+        db_path = tmp_path / "existing.db"
+        db_path.touch()
 
-    def test_duplicate_resolve_with_force(self, runner: CliRunner):
+        result = runner.invoke(
+            app, ["duplicate", "resolve", "--db-path", str(db_path)], input="n\n"
+        )
+        assert result.exit_code == 1
+        assert "Aborted." in result.stdout
+
+    def test_duplicate_resolve_with_force(self, runner: CliRunner, tmp_path: Path):
         """duplicate resolve --force should skip confirmation."""
         from dex_python.cli import app
 
-        result = runner.invoke(app, ["duplicate", "resolve", "--force"])
-        # Should run (even if DB doesn't exist, that's a different error)
-        assert result.exit_code in [0, 1]
+        db_path = tmp_path / "existing.db"
+        db_path.touch()
+
+        result = runner.invoke(
+            app, ["duplicate", "resolve", "--force", "--db-path", str(db_path)]
+        )
+        assert result.exit_code == 0
+        assert "Resolution complete." in result.stdout
 
 
 class TestEnrichmentCommandOptions:
@@ -143,16 +211,21 @@ class TestEnrichmentCommandOptions:
         from dex_python.cli import app
 
         result = runner.invoke(app, ["enrichment", "push"])
-        # Should error about missing --mode
-        assert result.exit_code != 0
+        assert result.exit_code == 2
+        assert "Missing option '--mode'" in result.output
 
-    def test_enrichment_push_with_valid_mode(self, runner: CliRunner):
+    def test_enrichment_push_with_valid_mode(self, runner: CliRunner, tmp_path: Path):
         """enrichment push with valid mode should work."""
         from dex_python.cli import app
 
-        result = runner.invoke(app, ["enrichment", "push", "--mode", "notes"])
-        # Should run (DB check might fail, but mode validation passes)
-        assert result.exit_code in [0, 1]
+        db_path = tmp_path / "existing.db"
+        db_path.touch()
+
+        result = runner.invoke(
+            app, ["enrichment", "push", "--mode", "notes", "--db-path", str(db_path)]
+        )
+        assert result.exit_code == 0
+        assert "Pushing notes from:" in result.stdout
 
     def test_enrichment_push_with_invalid_mode(self, runner: CliRunner):
         """enrichment push with invalid mode should error."""
@@ -160,17 +233,29 @@ class TestEnrichmentCommandOptions:
 
         result = runner.invoke(app, ["enrichment", "push", "--mode", "invalid"])
         assert result.exit_code == 1
-        assert "Invalid mode" in result.output  # Error goes to stderr
+        assert "Invalid mode" in result.output
 
-    def test_enrichment_push_with_dry_run(self, runner: CliRunner):
+    def test_enrichment_push_with_dry_run(self, runner: CliRunner, tmp_path: Path):
         """enrichment push --dry-run should preview."""
         from dex_python.cli import app
 
+        db_path = tmp_path / "existing.db"
+        db_path.touch()
+
         result = runner.invoke(
-            app, ["enrichment", "push", "--mode", "notes", "--dry-run"]
+            app,
+            [
+                "enrichment",
+                "push",
+                "--mode",
+                "notes",
+                "--dry-run",
+                "--db-path",
+                str(db_path),
+            ],
         )
-        # Should run in dry-run mode
-        assert result.exit_code in [0, 1]
+        assert result.exit_code == 0
+        assert "Dry run - would push notes from:" in result.stdout
 
 
 class TestCLIErrorHandling:
@@ -181,28 +266,32 @@ class TestCLIErrorHandling:
         from dex_python.cli import app
 
         result = runner.invoke(app, ["nonexistent"])
-        assert result.exit_code != 0
+        assert result.exit_code == 2
+        assert "No such command" in result.output
 
     def test_sync_without_subcommand(self, runner: CliRunner):
         """sync without subcommand should show help."""
         from dex_python.cli import app
 
         result = runner.invoke(app, ["sync"])
-        assert "incremental" in result.stdout or "Usage" in result.stdout
+        assert result.exit_code == 2
+        assert "Usage: dex sync" in result.output
 
     def test_duplicate_without_subcommand(self, runner: CliRunner):
         """duplicate without subcommand should show help."""
         from dex_python.cli import app
 
         result = runner.invoke(app, ["duplicate"])
-        assert "analyze" in result.stdout or "Usage" in result.stdout
+        assert result.exit_code == 2
+        assert "Usage: dex duplicate" in result.output
 
     def test_enrichment_without_subcommand(self, runner: CliRunner):
         """enrichment without subcommand should show help."""
         from dex_python.cli import app
 
         result = runner.invoke(app, ["enrichment"])
-        assert "backfill" in result.stdout or "Usage" in result.stdout
+        assert result.exit_code == 2
+        assert "Usage: dex enrichment" in result.output
 
 
 class TestCLIOutputFormatting:
@@ -214,9 +303,7 @@ class TestCLIOutputFormatting:
 
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        # Should contain version number
-        assert "0.1.0" in result.stdout
-        # Should be a clean single line or short output
+        assert CLI_VERSION in result.stdout
         assert result.stdout.count("\n") <= 2
 
     def test_help_output_is_readable(self, runner: CliRunner):
@@ -225,7 +312,6 @@ class TestCLIOutputFormatting:
 
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        # Should have clear sections
         assert "Commands" in result.stdout or "Usage" in result.stdout
 
     def test_short_version_flag(self, runner: CliRunner):
@@ -234,4 +320,4 @@ class TestCLIOutputFormatting:
 
         result = runner.invoke(app, ["-V"])
         assert result.exit_code == 0
-        assert "0.1.0" in result.stdout
+        assert CLI_VERSION in result.stdout

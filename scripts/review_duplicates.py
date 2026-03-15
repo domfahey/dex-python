@@ -1,5 +1,6 @@
 """Interactive CLI tool to review and label duplicate contacts."""
 
+import argparse
 import os
 import sqlite3
 import urllib.parse
@@ -12,6 +13,21 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 DEX_SEARCH_URL = "https://getdex.com/appv3/search?terms="
+DATA_DIR = Path(os.getenv("DEX_DATA_DIR", "output"))
+DEFAULT_DB_PATH = DATA_DIR / "dex_contacts.db"
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Interactively review duplicate contacts in the SQLite database."
+    )
+    parser.add_argument(
+        "--db",
+        default=str(DEFAULT_DB_PATH),
+        help=f"Path to the SQLite database (default: {DEFAULT_DB_PATH})",
+    )
+    return parser.parse_args()
 
 
 def setup_db(cursor: sqlite3.Cursor) -> None:
@@ -27,19 +43,17 @@ def setup_db(cursor: sqlite3.Cursor) -> None:
         pass
 
 
-def main() -> None:
+def main(db_path: str = str(DEFAULT_DB_PATH)) -> None:
     """
     Review and label duplicate contact groups stored in SQLite.
 
-    Reads the database path from DEX_DATA_DIR (default: output/dex_contacts.db)
-    and updates duplicate_resolution/primary_contact_id as groups are resolved.
+    Updates duplicate_resolution/primary_contact_id as groups are resolved.
     """
-    data_dir = Path(os.getenv("DEX_DATA_DIR", "output"))
-    db_path = data_dir / "dex_contacts.db"
-    if not db_path.exists():
+    resolved_db_path = Path(db_path)
+    if not resolved_db_path.exists():
         print(f"Error: Database {db_path} not found.")
-        return
-    conn = sqlite3.connect(db_path)
+        raise SystemExit(1)
+    conn = sqlite3.connect(resolved_db_path)
     cursor = conn.cursor()
 
     # Check if duplicate_group_id exists
@@ -230,4 +244,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args.db)

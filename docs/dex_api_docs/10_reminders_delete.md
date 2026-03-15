@@ -10,6 +10,6 @@ DELETE https://api.getdex.com/api/rest/reminders/{reminderId}
 
 ### Path Parameters
 
-**reminderID** `string` **required**
+**reminderId** `string` **required**
 
 The ID of the reminder to be deleted

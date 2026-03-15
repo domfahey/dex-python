@@ -39,10 +39,9 @@ matching. Items in Future Enhancements are not implemented yet.
 
 ## 5. Workflow
 1. Sync contacts to SQLite (`scripts/main.py` or `scripts/sync_with_integrity.py`).
-   Most scripts read from `output/dex_contacts.db` by default (override with
-   `DEX_DATA_DIR`). `scripts/sync_with_integrity.py` currently writes
-   `dex_contacts.db` in the repo root; set `DEX_DATA_DIR=.` for the other tools
-   if you want them to target that database.
+   `scripts/main.py` and CLI paths use `DEX_DATA_DIR`/`--data-dir` and default to
+   `output/dex_contacts.db`. `scripts/sync_with_integrity.py` currently writes
+   `./dex_contacts.db` in the current working directory.
 2. Generate a report (`scripts/analyze_duplicates.py`).
 3. Flag candidate groups (`scripts/flag_duplicates.py`).
 4. Review and choose primaries (`scripts/review_duplicates.py`).

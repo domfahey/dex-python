@@ -1,5 +1,10 @@
 """Dex CLI - Unified command-line interface for Dex CRM tools."""
 
+import tomllib
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
+from pathlib import Path
+
 import typer
 
 from .duplicate import app as duplicate_app
@@ -13,12 +18,29 @@ app = typer.Typer(
 )
 
 
+def _cli_version() -> str:
+    """Return CLI version from installed metadata or local project metadata."""
+    try:
+        return package_version("dex-python")
+    except PackageNotFoundError:
+        for parent in Path(__file__).resolve().parents:
+            pyproject = parent / "pyproject.toml"
+            if pyproject.exists():
+                try:
+                    with pyproject.open("rb") as handle:
+                        return str(tomllib.load(handle)["project"]["version"])
+                except (OSError, tomllib.TOMLDecodeError, KeyError):
+                    continue
+    return "0.1.0"
+
+
 def version_callback(value: bool) -> None:
     """
     Print the CLI version and exit if requested.
     """
     if value:
-        typer.echo("dex-python 0.1.0")
+        cli_version = _cli_version()
+        typer.echo(f"dex-python {cli_version}")
         raise typer.Exit()
 
 

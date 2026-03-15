@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_httpx import HTTPXMock
@@ -11,6 +13,7 @@ from dex_python import (
     ContactCreate,
     ContactUpdate,
     DexClient,
+    NoteCreate,
     NoteUpdate,
     ReminderUpdate,
     Settings,
@@ -35,12 +38,19 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_client_uses_correct_headers(
-    client_kind: ClientKind, settings: Settings
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
 ) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/contacts", "limit=100&offset=0"),
+        json={"contacts": []},
+    )
+
     async with client_context(client_kind, settings) as client:
-        headers = client._client.headers
-        assert headers["content-type"] == "application/json"
-        assert headers["x-hasura-dex-api-key"] == "test-api-key"
+        await maybe_await(client.get_contacts())
+
+    request = get_single_request(httpx_mock)
+    assert request.headers["content-type"] == "application/json"
+    assert request.headers["x-hasura-dex-api-key"] == "test-api-key"
 
 
 async def test_get_contacts(
@@ -137,7 +147,7 @@ async def test_create_contact_sends_expected_body(
     assert request.method == "POST"
     assert str(request.url) == build_url(settings, "/contacts")
     assert json.loads(request.content) == {
-        "contact": new_contact.model_dump(exclude_none=True)
+        "contact": new_contact.model_dump(exclude_none=True, mode="json")
     }
     assert result["id"] == "789"
 
@@ -160,7 +170,7 @@ async def test_update_contact_sends_expected_body(
     assert request.method == "PUT"
     assert str(request.url) == build_url(settings, "/contacts/contact-123")
     assert json.loads(request.content) == update.model_dump(
-        exclude_none=True, by_alias=True
+        exclude_none=True, by_alias=True, mode="json"
     )
     assert result["id"] == "contact-123"
 
@@ -185,8 +195,85 @@ async def test_update_reminder_sends_expected_body(
     request = get_single_request(httpx_mock)
     assert request.method == "PUT"
     assert str(request.url) == build_url(settings, "/reminders/reminder-123")
-    assert json.loads(request.content) == update.model_dump(exclude_none=True)
+    assert json.loads(request.content) == update.model_dump(
+        exclude_none=True, mode="json"
+    )
     assert result["id"] == "reminder-123"
+
+
+async def test_create_contact_with_datetime_fields_sends_iso(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    timestamp = datetime(2025, 1, 15, 10, 30, 0)
+    new_contact = ContactCreate(first_name="Alice", last_seen_at=timestamp)
+    mock_response = {
+        "insert_contacts_one": {
+            "id": "789",
+            "first_name": "Alice",
+        }
+    }
+    httpx_mock.add_response(
+        url=build_url(settings, "/contacts"),
+        method="POST",
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        await maybe_await(client.create_contact(new_contact))
+
+    request = get_single_request(httpx_mock)
+    payload = json.loads(request.content)["contact"]
+    assert payload["last_seen_at"] == "2025-01-15T10:30:00"
+
+
+async def test_create_note_with_datetime_event_time_sends_iso(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    timestamp = datetime(2025, 1, 15, 10, 30, 0)
+    new_note = NoteCreate(note="Team sync", event_time=timestamp)
+    mock_response = {
+        "insert_timeline_items_one": {
+            "id": "note-1",
+            "note": "Team sync",
+        }
+    }
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline_items"),
+        method="POST",
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        await maybe_await(client.create_note(new_note))
+
+    request = get_single_request(httpx_mock)
+    payload = json.loads(request.content)["timeline_event"]
+    assert payload["event_time"] == "2025-01-15T10:30:00"
+
+
+async def test_update_reminder_with_datetime_change_uses_json_dump(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    due_at = datetime(2025, 1, 15, 10, 30, 0)
+    update = ReminderUpdate(
+        reminder_id="reminder-456",
+        changes={"due_at": due_at},
+    )
+    mock_response = {
+        "update_reminders_by_pk": {"id": "reminder-456"},
+    }
+    httpx_mock.add_response(
+        url=build_url(settings, "/reminders/reminder-456"),
+        method="PUT",
+        json=mock_response,
+    )
+
+    async with client_context(client_kind, settings) as client:
+        await maybe_await(client.update_reminder(update))
+
+    request = get_single_request(httpx_mock)
+    payload = json.loads(request.content)
+    assert payload["changes"]["due_at"] == "2025-01-15T10:30:00"
 
 
 async def test_update_note_sends_expected_body(
@@ -206,7 +293,9 @@ async def test_update_note_sends_expected_body(
     request = get_single_request(httpx_mock)
     assert request.method == "PUT"
     assert str(request.url) == build_url(settings, "/timeline_items/note-456")
-    assert json.loads(request.content) == update.model_dump(exclude_none=True)
+    assert json.loads(request.content) == update.model_dump(
+        exclude_none=True, mode="json"
+    )
     assert result["id"] == "note-456"
 
 
@@ -231,10 +320,16 @@ async def test_delete_contact(
 async def test_context_manager_closes_client(
     client_kind: ClientKind, settings: Settings
 ) -> None:
-    client_ref: DexClient | AsyncDexClient
-    async with client_context(client_kind, settings) as client:
-        client_ref = client
-    assert client_ref._client.is_closed
+    if client_kind == "sync":
+        with patch.object(DexClient, "close") as close_mock:
+            async with client_context(client_kind, settings) as _:
+                pass
+            assert close_mock.call_count == 1
+    else:
+        with patch.object(AsyncDexClient, "close", new=AsyncMock()) as close_mock:
+            async with client_context(client_kind, settings) as _:
+                pass
+            close_mock.assert_awaited_once()
 
 
 async def test_401_raises_authentication_error(

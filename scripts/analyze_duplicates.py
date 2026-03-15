@@ -1,5 +1,6 @@
 """Script to analyze duplicates in the local database across all levels."""
 
+import argparse
 import os
 import sqlite3
 from itertools import chain
@@ -18,6 +19,24 @@ from dex_python.deduplication import (
 DATA_DIR = Path(os.getenv("DEX_DATA_DIR", "output"))
 DEFAULT_DB_PATH = DATA_DIR / "dex_contacts.db"
 DEFAULT_REPORT_PATH = DATA_DIR / "DUPLICATE_REPORT.md"
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Analyze duplicate contacts and write a Markdown report."
+    )
+    parser.add_argument(
+        "--db",
+        default=str(DEFAULT_DB_PATH),
+        help=f"Path to the SQLite database (default: {DEFAULT_DB_PATH})",
+    )
+    parser.add_argument(
+        "--output",
+        default=str(DEFAULT_REPORT_PATH),
+        help=f"Path to the Markdown report (default: {DEFAULT_REPORT_PATH})",
+    )
+    return parser.parse_args()
 
 
 def get_contact_summary(conn: sqlite3.Connection, contact_id: str) -> dict[str, Any]:
@@ -54,7 +73,7 @@ def generate_report(db_path: str, output_path: str) -> None:
     """Run duplicate analysis across all levels and generate a Markdown report."""
     if not Path(db_path).exists():
         print(f"Error: Database {db_path} not found.")
-        return
+        raise SystemExit(1)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -95,7 +114,7 @@ def generate_report(db_path: str, output_path: str) -> None:
     print(f"Total contacts flagged as potential duplicates: {len(all_dupe_ids)}")
 
     # Generate Markdown Report
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write("# Comprehensive Duplicate Contact Report\n\n")
         f.write(f"**Database:** `{db_path}`\n")
         f.write(f"**Total Flagged Contacts:** {len(all_dupe_ids)}\n\n")
@@ -147,4 +166,5 @@ def generate_report(db_path: str, output_path: str) -> None:
 
 
 if __name__ == "__main__":
-    generate_report(str(DEFAULT_DB_PATH), str(DEFAULT_REPORT_PATH))
+    args = parse_args()
+    generate_report(args.db, args.output)

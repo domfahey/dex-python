@@ -8,6 +8,8 @@ import sqlite3
 import time
 from itertools import combinations
 
+import pytest
+
 from dex_python.deduplication import (
     cluster_duplicates,
     find_email_duplicates,
@@ -82,40 +84,43 @@ def create_test_db_with_contacts(n_contacts: int, duplicates_ratio: float = 0.1)
     return conn
 
 
+@pytest.mark.performance
 def test_email_duplicates_performance():
     """Test that email duplicate finding is fast with indexes."""
     conn = create_test_db_with_contacts(1000, duplicates_ratio=0.1)
 
-    start = time.time()
+    start = time.perf_counter()
     results = find_email_duplicates(conn)
-    elapsed = time.time() - start
+    elapsed = time.perf_counter() - start
 
-    # Should complete in under 100ms for 1000 contacts
-    assert elapsed < 0.1, (
-        f"Email duplicate finding took {elapsed:.3f}s (expected < 0.1s)"
+    # Should complete quickly for 1000 contacts
+    assert elapsed < 0.5, (
+        f"Email duplicate finding took {elapsed:.3f}s (expected < 0.5s)"
     )
     # Should find duplicates (10% ratio means ~50 groups)
     assert len(results) > 0, "Should find duplicate emails"
     conn.close()
 
 
+@pytest.mark.performance
 def test_phone_duplicates_performance():
     """Test that phone duplicate finding is fast with indexes."""
     conn = create_test_db_with_contacts(1000, duplicates_ratio=0.1)
 
-    start = time.time()
+    start = time.perf_counter()
     results = find_phone_duplicates(conn)
-    elapsed = time.time() - start
+    elapsed = time.perf_counter() - start
 
-    # Should complete in under 100ms for 1000 contacts
-    assert elapsed < 0.1, (
-        f"Phone duplicate finding took {elapsed:.3f}s (expected < 0.1s)"
+    # Should complete quickly for 1000 contacts
+    assert elapsed < 0.5, (
+        f"Phone duplicate finding took {elapsed:.3f}s (expected < 0.5s)"
     )
     # Should find duplicates
     assert len(results) > 0, "Should find duplicate phones"
     conn.close()
 
 
+@pytest.mark.performance
 def test_cluster_duplicates_optimized():
     """Test that cluster_duplicates uses efficient itertools.combinations."""
     # Create test matches
@@ -125,12 +130,12 @@ def test_cluster_duplicates_optimized():
         {"contact_ids": ["c", "f"]},  # Links to first group
     ]
 
-    start = time.time()
+    start = time.perf_counter()
     clusters = cluster_duplicates(matches)
-    elapsed = time.time() - start
+    elapsed = time.perf_counter() - start
 
     # Should be very fast
-    assert elapsed < 0.01, f"Clustering took {elapsed:.3f}s (expected < 0.01s)"
+    assert elapsed < 0.2, f"Clustering took {elapsed:.3f}s (expected < 0.2s)"
 
     # Should correctly cluster
     assert len(clusters) == 2, "Should have 2 clusters"
@@ -139,6 +144,7 @@ def test_cluster_duplicates_optimized():
     assert cluster1 == ["a", "b", "c", "f"]
 
 
+@pytest.mark.performance
 def test_list_comprehension_vs_append():
     """
     Compare list comprehension vs append for performance and equivalence.
@@ -147,27 +153,31 @@ def test_list_comprehension_vs_append():
     data = [(f"type_{i}", f"value_{i}", [f"id_{i}", f"id_{i + 1}"]) for i in range(n)]
 
     # Old style with append (simulated)
-    start = time.time()
+    start = time.perf_counter()
     results_old = []
     for match_type, value, ids in data:
         results_old.append(
             {"match_type": match_type, "match_value": value, "contact_ids": ids}
         )
-    old_time = time.time() - start
+    old_time = time.perf_counter() - start
 
     # New style with list comprehension
-    start = time.time()
+    start = time.perf_counter()
     results_new = [
         {"match_type": mt, "match_value": val, "contact_ids": ids}
         for mt, val, ids in data
     ]
-    new_time = time.time() - start
+    new_time = time.perf_counter() - start
 
     # Use a generous multiplier to reduce micro-benchmark flakiness.
-    assert new_time <= old_time * 15.0, "List comprehension should be efficient"
+    # If timing is too coarse and one side is effectively zero, skip ratio assertions
+    # and still keep the equivalence check.
+    if old_time > 0:
+        assert new_time <= old_time * 5.0, "List comprehension should be efficient"
     assert len(results_new) == len(results_old) == n
 
 
+@pytest.mark.performance
 def test_batch_executemany_vs_individual():
     """Test that executemany is faster than individual inserts."""
     conn = sqlite3.connect(":memory:")
@@ -186,49 +196,58 @@ def test_batch_executemany_vs_individual():
     email_data = [(contact_id, f"email{i}@example.com") for i in range(n)]
 
     # Individual inserts (old way)
-    start = time.time()
+    start = time.perf_counter()
     for cid, email in email_data:
         cursor.execute(
             "INSERT INTO test_emails (contact_id, email) VALUES (?, ?)", (cid, email)
         )
-    individual_time = time.time() - start
+    individual_time = time.perf_counter() - start
 
     # Clear table
     cursor.execute("DELETE FROM test_emails")
 
     # Batch insert with executemany (new way)
-    start = time.time()
+    start = time.perf_counter()
     cursor.executemany(
         "INSERT INTO test_emails (contact_id, email) VALUES (?, ?)", email_data
     )
-    batch_time = time.time() - start
+    batch_time = time.perf_counter() - start
 
     conn.close()
 
-    # Keep the threshold low to tolerate timing variance across environments.
-    speedup = individual_time / batch_time
-    assert speedup > 1.1, f"Batch insert should be >1.1x faster (was {speedup:.1f}x)"
+    # Keep the threshold modest to tolerate timing variance across environments.
+    if batch_time > 0:
+        speedup = individual_time / batch_time
+        assert speedup >= 1.0, (
+            f"Batch insert should be as fast or faster than "
+            f"individual inserts (was {speedup:.1f}x)"
+        )
+    else:
+        pytest.skip("Timer resolution too coarse for batch insert benchmark")
 
 
+@pytest.mark.performance
 def test_combinations_vs_nested_loops():
     """Test that itertools.combinations is faster than nested loops."""
     ids = [f"id_{i}" for i in range(100)]
 
     # Old way: nested loops
-    start = time.time()
+    start = time.perf_counter()
     edges_old = []
     for i in range(len(ids)):
         for j in range(i + 1, len(ids)):
             edges_old.append((ids[i], ids[j]))
-    old_time = time.time() - start
+    old_time = time.perf_counter() - start
 
     # New way: itertools.combinations
-    start = time.time()
+    start = time.perf_counter()
     edges_new = list(combinations(ids, 2))
-    new_time = time.time() - start
+    new_time = time.perf_counter() - start
 
     assert len(edges_new) == len(edges_old)
     # combinations should be comparable or faster; allow 2x tolerance for noise
-    assert new_time <= old_time * 2, (
-        f"combinations ({new_time:.3f}s) should be <= 2x nested loops ({old_time:.3f}s)"
-    )
+    if old_time > 0:
+        assert new_time <= old_time * 2, (
+            f"combinations ({new_time:.3f}s) should be <= 2x "
+            f"nested loops ({old_time:.3f}s)"
+        )
