@@ -16,7 +16,7 @@ Environment Variables:
 """
 
 import time
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import httpx
 
@@ -139,8 +139,11 @@ class DexClient:
             elif "/reminders/" in endpoint:
                 reminder_id = endpoint.split("/reminders/")[-1].split("/")[0]
                 raise ReminderNotFoundError(reminder_id)
-            elif "/timeline_items/" in endpoint:
-                note_id = endpoint.split("/timeline_items/")[-1].split("/")[0]
+            elif "/timeline_items/" in endpoint or "/timeline/" in endpoint:
+                if "/timeline/" in endpoint:
+                    note_id = endpoint.split("/timeline/")[-1].split("/")[0]
+                else:
+                    note_id = endpoint.split("/timeline_items/")[-1].split("/")[0]
                 raise NoteNotFoundError(note_id)
             raise DexAPIError("Not found", status_code=404, response_data=data)
         else:
@@ -208,6 +211,32 @@ class DexClient:
         result: dict[str, Any] = response.json()
         return result
 
+    def _request_with_fallback(
+        self, method: str, endpoints: list[str], **kwargs: Any
+    ) -> dict[str, Any]:
+        """Execute API request with fallback endpoints.
+
+        Tries each endpoint in order and falls back to the next endpoint when the
+        previous returns a 404. For other errors, the error from the first
+        failing endpoint is raised immediately.
+        """
+
+        if not endpoints:
+            raise DexAPIError("No fallback endpoints provided", status_code=500)
+
+        for index, endpoint in enumerate(endpoints):
+            response = self._request_with_retry(method, endpoint, **kwargs)
+            if response.status_code < 400:
+                return cast(dict[str, Any], response.json())
+
+            is_last_attempt = index >= len(endpoints) - 1
+            if response.status_code == 404 and not is_last_attempt:
+                continue
+
+            self._handle_error(response, endpoint)
+
+        raise DexAPIError("Request failed", status_code=500)
+
     # =========================================================================
     # Contacts API
     # =========================================================================
@@ -263,6 +292,89 @@ class DexClient:
             limit=limit,
             offset=offset,
         )
+
+    def update_contacts_bulk(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Update multiple contacts in a single request."""
+        data = self._request("PUT", "/contacts", json=payload)
+        return dict(data)
+
+    def delete_contacts_bulk(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Delete multiple contacts in a single request."""
+        data = self._request("DELETE", "/contacts", json=payload)
+        return dict(data)
+
+    def count_contacts(self) -> int:
+        """Get total number of contacts."""
+        data = self._request("GET", "/contacts/count")
+        if isinstance(data, int):
+            return data
+        if isinstance(data, dict):
+            for key in ("count", "total", "contacts_count"):
+                count = data.get(key)
+                if isinstance(count, int):
+                    return count
+            aggregate = data.get("aggregate")
+            if isinstance(aggregate, dict):
+                count = aggregate.get("count")
+                if isinstance(count, int):
+                    return count
+            total = data.get("total")
+            if isinstance(total, dict):
+                aggregate = total.get("aggregate")
+                if isinstance(aggregate, dict):
+                    count = aggregate.get("count")
+                    if isinstance(count, int):
+                        return count
+                count = total.get("count")
+                if isinstance(count, int):
+                    return count
+            pagination = data.get("pagination")
+            if isinstance(pagination, dict):
+                total = pagination.get("total")
+                if isinstance(total, dict):
+                    count = total.get("count")
+                    if isinstance(count, int):
+                        return count
+                    aggregate = total.get("aggregate")
+                    if isinstance(aggregate, dict):
+                        count = aggregate.get("count")
+                        if isinstance(count, int):
+                            return count
+        return 0
+
+    def search_contacts(
+        self, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Search contacts."""
+        data = self._request("GET", "/contacts/search", params=params or {})
+        candidates = data.get("contacts")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def filter_contacts(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        """Filter contacts."""
+        data = self._request("POST", "/contacts/filter", json=payload)
+        candidates = data.get("contacts")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def find_contacts_by_emails(
+        self, payload: dict[str, Any] | list[str]
+    ) -> list[dict[str, Any]]:
+        """Find contacts by email addresses."""
+        body = payload if isinstance(payload, dict) else {"emails": payload}
+        data = self._request("POST", "/contacts/by-emails", json=body)
+        candidates = data.get("contacts")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def merge_contacts(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Merge multiple contacts."""
+        data = self._request("POST", "/contacts/merge", json=payload)
+        return dict(data)
 
     def get_contact(self, contact_id: str) -> dict[str, Any]:
         """Fetch a single contact by ID.
@@ -362,6 +474,26 @@ class DexClient:
         )
         result: list[dict[str, Any]] = data.get("reminders", [])
         return result
+
+    def get_reminder(self, reminder_id: str) -> dict[str, Any]:
+        """Fetch a single reminder by ID."""
+        data = self._request("GET", f"/reminders/{reminder_id}")
+        reminders = data.get("reminders")
+        if isinstance(reminders, list) and reminders:
+            result: dict[str, Any] = reminders[0]
+            return result
+        reminder = data.get("reminder")
+        if isinstance(reminder, dict):
+            return reminder
+        return dict(data)
+
+    def get_recurring_reminders(self) -> list[dict[str, Any]]:
+        """Fetch recurring reminders."""
+        data = self._request("GET", "/reminders/recurring")
+        reminders = data.get("reminders")
+        if isinstance(reminders, list):
+            return reminders
+        return []
 
     def get_reminders_paginated(
         self, limit: int = 100, offset: int = 0
@@ -485,6 +617,76 @@ class DexClient:
             offset=offset,
         )
 
+    def get_timeline(self, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+        """Fetch a paginated list of timeline items from docs endpoint."""
+        data = self._request(
+            "GET",
+            "/timeline",
+            params={"limit": limit, "offset": offset},
+        )
+        candidates = data.get("timeline")
+        if isinstance(candidates, list):
+            return candidates
+        candidates = data.get("timeline_items")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def get_timeline_note(self, note_id: str) -> dict[str, Any]:
+        """Fetch a single timeline item."""
+        data = self._request("GET", f"/timeline/{note_id}")
+        if not isinstance(data, dict):
+            return {}
+        note = data.get("timeline_item")
+        if isinstance(note, dict):
+            return note
+        timeline = data.get("timeline")
+        if isinstance(timeline, dict):
+            return timeline
+        return {}
+
+    def count_timeline(self) -> int:
+        """Get total number of timeline items."""
+        data = self._request("GET", "/timeline/count")
+        if isinstance(data, int):
+            return data
+        if isinstance(data, dict):
+            count = data.get("count")
+            if isinstance(count, int):
+                return count
+            total = data.get("total")
+            if isinstance(total, dict):
+                aggregate = total.get("aggregate")
+                if isinstance(aggregate, dict):
+                    count = aggregate.get("count")
+                    if isinstance(count, int):
+                        return count
+                count = total.get("count")
+                if isinstance(count, int):
+                    return count
+            pagination = data.get("pagination")
+            if isinstance(pagination, dict):
+                total = pagination.get("total")
+                if isinstance(total, dict):
+                    count = total.get("count")
+                    if isinstance(count, int):
+                        return count
+                    aggregate = total.get("aggregate")
+                    if isinstance(aggregate, dict):
+                        count = aggregate.get("count")
+                        if isinstance(count, int):
+                            return count
+        return 0
+
+    def get_timeline_note_types(self) -> list[str]:
+        """Fetch supported timeline note types."""
+        data = self._request("GET", "/timeline/note-types")
+        for key in ("note_types", "timeline_note_types", "types"):
+            candidates = data.get(key)
+            if isinstance(candidates, list):
+                return candidates
+        return []
+
     def get_notes_by_contact(self, contact_id: str) -> list[dict[str, Any]]:
         """Fetch all notes associated with a specific contact.
 
@@ -498,6 +700,162 @@ class DexClient:
         result: list[dict[str, Any]] = data.get("timeline_items", [])
         return result
 
+    def get_groups(self) -> list[dict[str, Any]]:
+        """Fetch all groups."""
+        data = self._request("GET", "/groups")
+        groups = data.get("groups")
+        if isinstance(groups, list):
+            return groups
+        return []
+
+    def get_group(self, group_id: str) -> dict[str, Any]:
+        """Fetch a single group."""
+        data = self._request("GET", f"/groups/{group_id}")
+        return dict(data)
+
+    def create_group(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Create a new group."""
+        data = self._request("POST", "/groups", json=payload)
+        return dict(data)
+
+    def update_group(self, group_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Update an existing group."""
+        data = self._request("PUT", f"/groups/{group_id}", json=payload)
+        return dict(data)
+
+    def delete_group(self, group_id: str) -> dict[str, Any]:
+        """Delete a group."""
+        data = self._request("DELETE", f"/groups/{group_id}")
+        return dict(data)
+
+    def count_groups(self) -> int:
+        """Get total number of groups."""
+        data = self._request("GET", "/groups/count")
+        if isinstance(data, int):
+            return data
+        if isinstance(data, dict):
+            count = data.get("count")
+            if isinstance(count, int):
+                return count
+        return 0
+
+    def get_group_contacts(self, group_id: str) -> list[dict[str, Any]]:
+        """Fetch contacts in a group."""
+        data = self._request("GET", f"/groups/{group_id}/contacts")
+        candidates = data.get("contacts")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def add_group_contacts(
+        self, group_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Add contacts to a group."""
+        data = self._request("PUT", f"/groups/{group_id}/contacts", json=payload)
+        return dict(data)
+
+    def remove_group_contacts(
+        self, group_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Remove contacts from a group."""
+        data = self._request("POST", f"/groups/{group_id}/contacts", json=payload)
+        return dict(data)
+
+    def get_group_contact_counts(self) -> list[dict[str, Any]]:
+        """Fetch per-group contact counts."""
+        data = self._request("GET", "/groups/contact-counts")
+        counts = data.get("counts")
+        if isinstance(counts, list):
+            return counts
+        return []
+
+    # =========================================================================
+    # Custom Fields API
+    # =========================================================================
+
+    def get_custom_fields(self) -> list[dict[str, Any]]:
+        """Fetch custom field definitions for the authenticated user."""
+        data = self._request_with_fallback(
+            "GET",
+            [
+                "/custom-fields",
+                "/v1/custom-fields",
+            ],
+        )
+        if not isinstance(data, dict):
+            return []
+        payload = data.get("data")
+        if isinstance(payload, dict):
+            custom_fields = payload.get("custom_fields", [])
+        else:
+            custom_fields = data.get("custom_fields", [])
+        if not isinstance(custom_fields, list):
+            return []
+        return custom_fields
+
+    def create_custom_field(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Create a custom field."""
+        data = self._request_with_fallback(
+            "POST",
+            [
+                "/custom-fields",
+                "/v1/custom-fields",
+            ],
+            json=payload,
+        )
+        return dict(data)
+
+    def update_custom_field(
+        self, custom_field_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update a custom field."""
+        data = self._request_with_fallback(
+            "PUT",
+            [
+                f"/custom-fields/{custom_field_id}",
+                f"/v1/custom-fields/{custom_field_id}",
+            ],
+            json=payload,
+        )
+        return dict(data)
+
+    def delete_custom_field(self, custom_field_id: str) -> dict[str, Any]:
+        """Delete a custom field."""
+        data = self._request_with_fallback(
+            "DELETE",
+            [
+                f"/custom-fields/{custom_field_id}",
+                f"/v1/custom-fields/{custom_field_id}",
+            ],
+        )
+        return dict(data)
+
+    def reorder_custom_fields(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Reorder custom fields."""
+        data = self._request_with_fallback(
+            "PUT",
+            [
+                "/custom-fields/reorder",
+                "/v1/custom-fields/reorder",
+            ],
+            json=payload,
+        )
+        return dict(data)
+
+    def batch_update_custom_fields_contacts(
+        self, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Batch update custom field values for contacts."""
+        data = self._request_with_fallback(
+            "POST",
+            [
+                "/custom-fields/batch-update-contacts",
+                "/v1/custom-fields/batch-update-contacts",
+            ],
+            json=payload,
+        )
+        return dict(data)
+
     def create_note(self, note: NoteCreate) -> dict[str, Any]:
         """Create a new note (timeline item).
 
@@ -508,12 +866,113 @@ class DexClient:
         Returns:
             The created note data including server-assigned ID.
         """
-        data = self._request(
+        data = self._request_with_fallback(
             "POST",
-            "/timeline_items",
+            [
+                "/timeline",
+                "/timeline_items",
+            ],
             json={"timeline_event": note.model_dump(exclude_none=True, mode="json")},
         )
         return dict(extract_note_entity(data))
+
+    def search_groups(
+        self, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Search groups."""
+        data = self._request("GET", "/search/groups", params=params or {})
+        candidates = data.get("groups")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def search_timeline(
+        self, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Search timeline notes."""
+        data = self._request("GET", "/search/timeline", params=params or {})
+        candidates = data.get("timeline")
+        if isinstance(candidates, list):
+            return candidates
+        candidates = data.get("timeline_items")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def search_reminders(
+        self, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Search reminders."""
+        data = self._request("GET", "/search/reminders", params=params or {})
+        candidates = data.get("reminders")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def search_tags(self, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Search tags."""
+        data = self._request("GET", "/search/tags", params=params or {})
+        candidates = data.get("tags")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def search_views(
+        self, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Search views."""
+        data = self._request("GET", "/search/views", params=params or {})
+        candidates = data.get("views")
+        if isinstance(candidates, list):
+            return candidates
+        return []
+
+    def get_tags(self) -> list[dict[str, Any]]:
+        """Fetch tags."""
+        data = self._request("GET", "/tags")
+        tags = data.get("tags")
+        if isinstance(tags, list):
+            return tags
+        return []
+
+    def get_tag(self, tag_id: str) -> dict[str, Any]:
+        """Fetch a single tag."""
+        data = self._request("GET", f"/tags/{tag_id}")
+        return dict(data)
+
+    def create_tag(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Create a tag."""
+        data = self._request("POST", "/tags", json=payload)
+        return dict(data)
+
+    def update_tag(self, tag_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Update a tag."""
+        data = self._request("PUT", f"/tags/{tag_id}", json=payload)
+        return dict(data)
+
+    def delete_tag(self, tag_id: str) -> dict[str, Any]:
+        """Delete a tag."""
+        data = self._request("DELETE", f"/tags/{tag_id}")
+        return dict(data)
+
+    def count_tags(self) -> int:
+        """Get total number of tags."""
+        data = self._request("GET", "/tags/count")
+        if isinstance(data, int):
+            return data
+        if isinstance(data, dict):
+            count = data.get("count")
+            if isinstance(count, int):
+                return count
+        return 0
+
+    def get_tag_contact_counts(self) -> list[dict[str, Any]]:
+        """Fetch per-tag contact counts."""
+        data = self._request("GET", "/tags/contact-counts")
+        counts = data.get("counts")
+        if isinstance(counts, list):
+            return counts
+        return []
 
     def update_note(self, update: NoteUpdate) -> dict[str, Any]:
         """Update an existing note.
@@ -524,9 +983,12 @@ class DexClient:
         Returns:
             The updated note data.
         """
-        data = self._request(
+        data = self._request_with_fallback(
             "PUT",
-            f"/timeline_items/{update.note_id}",
+            [
+                f"/timeline/{update.note_id}",
+                f"/timeline_items/{update.note_id}",
+            ],
             json=update.model_dump(exclude_none=True, mode="json"),
         )
         return dict(extract_note_entity(data))
@@ -540,8 +1002,19 @@ class DexClient:
         Returns:
             The deleted note data.
         """
-        data = self._request("DELETE", f"/timeline_items/{note_id}")
+        data = self._request_with_fallback(
+            "DELETE",
+            [
+                f"/timeline/{note_id}",
+                f"/timeline_items/{note_id}",
+            ],
+        )
         return dict(extract_note_entity(data))
+
+    def get_current_user(self) -> dict[str, Any]:
+        """Fetch current user."""
+        data = self._request("GET", "/users/me")
+        return dict(data)
 
     # =========================================================================
     # Client Lifecycle

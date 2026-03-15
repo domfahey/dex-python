@@ -105,7 +105,7 @@ class TestNormalizedNoteReturns:
     ) -> None:
         """Test that create_note returns the created entity."""
         httpx_mock.add_response(
-            url="https://api.getdex.com/api/rest/timeline_items",
+            url="https://api.getdex.com/api/rest/timeline",
             method="POST",
             json={
                 "insert_timeline_items_one": {
