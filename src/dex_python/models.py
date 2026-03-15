@@ -5,6 +5,7 @@ Models use strict validation and match the official Dex API schema exactly.
 
 Model Categories:
     - Contact models: ContactEmail, ContactPhone, Contact, ContactCreate, ContactUpdate
+    - Custom field models: CustomField, CustomFieldCategory
     - Reminder models: Reminder, ReminderCreate, ReminderUpdate
     - Note models: Note, NoteCreate, NoteUpdate
     - Pagination: PaginatedContacts, PaginatedReminders, PaginatedNotes
@@ -33,6 +34,8 @@ __all__ = [
     "ReminderContact",
     "ReminderCreate",
     "ReminderUpdate",
+    "CustomField",
+    "CustomFieldCategory",
     # Note models
     "Note",
     "NoteContact",
@@ -312,6 +315,28 @@ class ContactUpdate(BaseModel):
     # Phone updates
     update_contact_phone_numbers: bool = False
     contact_phone_numbers: list[ContactPhone] = Field(default_factory=list)
+
+
+class CustomFieldCategory(BaseModel):
+    """Category metadata for a custom field."""
+
+    model_config = ConfigDict(strict=True)
+
+    category: str
+
+
+class CustomField(BaseModel):
+    """Dex custom field definition returned from GET /v1/custom-fields."""
+
+    model_config = ConfigDict(strict=True)
+
+    id: str
+    name: str
+    field_type: str
+    categories: list[CustomFieldCategory] = Field(default_factory=list)
+    ranking: int
+    created_at: str
+    updated_at: str
 
 
 # =============================================================================
