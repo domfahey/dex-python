@@ -23,10 +23,7 @@ def _cli_version() -> str:
     try:
         return package_version("dex-python")
     except PackageNotFoundError:
-        for parent in [
-            Path(__file__).resolve().parent,
-            *Path(__file__).resolve().parents,
-        ]:
+        for parent in Path(__file__).resolve().parents:
             pyproject = parent / "pyproject.toml"
             if pyproject.exists():
                 try:

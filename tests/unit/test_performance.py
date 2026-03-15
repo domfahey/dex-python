@@ -223,7 +223,7 @@ def test_batch_executemany_vs_individual():
             f"individual inserts (was {speedup:.1f}x)"
         )
     else:
-        assert individual_time >= 0
+        pytest.skip("Timer resolution too coarse for batch insert benchmark")
 
 
 @pytest.mark.performance

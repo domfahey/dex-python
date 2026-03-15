@@ -2,35 +2,15 @@
 
 from __future__ import annotations
 
-import tomllib
 from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as package_version
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+from dex_python.cli import _cli_version
 
-def _expected_cli_version() -> str:
-    """Resolve the CLI version from installed metadata or project file."""
-    try:
-        return package_version("dex-python")
-    except PackageNotFoundError:
-        for parent in [
-            Path(__file__).resolve().parent,
-            *Path(__file__).resolve().parents,
-        ]:
-            pyproject = parent / "pyproject.toml"
-            if pyproject.exists():
-                try:
-                    with pyproject.open("rb") as handle:
-                        return tomllib.load(handle)["project"]["version"]
-                except (OSError, tomllib.TOMLDecodeError, KeyError):
-                    continue
-        return "0.1.0"
-
-
-CLI_VERSION = _expected_cli_version()
+CLI_VERSION = _cli_version()
 
 
 @pytest.fixture
@@ -55,6 +35,49 @@ class TestCLIApp:
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
         assert CLI_VERSION in result.stdout
+
+
+class TestCLIVersionResolution:
+    """Test CLI version discovery behavior."""
+
+    def test_cli_version_reads_local_pyproject(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Fallback version lookup should read the nearest project metadata."""
+        import dex_python.cli as cli_module
+
+        package_root = tmp_path / "repo"
+        cli_dir = package_root / "src" / "dex_python" / "cli"
+        cli_dir.mkdir(parents=True)
+        (package_root / "pyproject.toml").write_text(
+            '[project]\nversion = "9.9.9"\n',
+            encoding="utf-8",
+        )
+
+        def raise_package_not_found(_: str) -> str:
+            raise PackageNotFoundError
+
+        monkeypatch.setattr(cli_module, "package_version", raise_package_not_found)
+        monkeypatch.setattr(cli_module, "__file__", str(cli_dir / "__init__.py"))
+
+        assert cli_module._cli_version() == "9.9.9"
+
+    def test_cli_version_defaults_when_project_metadata_missing(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Fallback should return the baked-in default when no metadata exists."""
+        import dex_python.cli as cli_module
+
+        cli_dir = tmp_path / "src" / "dex_python" / "cli"
+        cli_dir.mkdir(parents=True)
+
+        def raise_package_not_found(_: str) -> str:
+            raise PackageNotFoundError
+
+        monkeypatch.setattr(cli_module, "package_version", raise_package_not_found)
+        monkeypatch.setattr(cli_module, "__file__", str(cli_dir / "__init__.py"))
+
+        assert cli_module._cli_version() == "0.1.0"
 
 
 class TestSyncCommands:

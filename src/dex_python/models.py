@@ -561,7 +561,7 @@ class PaginatedContacts(BaseModel):
     """Paginated response wrapper for contact list queries.
 
     Attributes:
-        contacts: List of contact dictionaries for this page.
+        contacts: List of Contact models for this page.
         total: Total number of contacts matching the query.
         limit: Maximum results per page.
         offset: Number of results skipped.
@@ -591,7 +591,7 @@ class PaginatedReminders(BaseModel):
     """Paginated response wrapper for reminder list queries.
 
     Attributes:
-        reminders: List of reminder dictionaries for this page.
+        reminders: List of Reminder models for this page.
         total: Total number of reminders matching the query.
         limit: Maximum results per page.
         offset: Number of results skipped.
@@ -616,7 +616,7 @@ class PaginatedNotes(BaseModel):
     """Paginated response wrapper for note list queries.
 
     Attributes:
-        notes: List of note dictionaries for this page.
+        notes: List of Note models for this page.
         total: Total number of notes matching the query.
         limit: Maximum results per page.
         offset: Number of results skipped.

@@ -454,6 +454,26 @@ class TestPaginatedContacts:
         assert response2.has_more is False
 
 
+class TestPaginatedModelDocstrings:
+    """Ensure paginated response docs match the typed model fields."""
+
+    @pytest.mark.parametrize(
+        ("model", "expected_text"),
+        [
+            (PaginatedContacts, "contacts: List of Contact models for this page."),
+            (
+                PaginatedReminders,
+                "reminders: List of Reminder models for this page.",
+            ),
+            (PaginatedNotes, "notes: List of Note models for this page."),
+        ],
+    )
+    def test_docstrings_reference_typed_models(self, model: type, expected_text: str):
+        """Paginated model docstrings should describe typed page items."""
+        assert model.__doc__ is not None
+        assert expected_text in model.__doc__
+
+
 class TestPaginatedReminders:
     """Test suite for PaginatedReminders model."""
 
