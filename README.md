@@ -129,6 +129,7 @@ make test-unit        # Run unit tests only
 make test-integration # Run integration tests (requires API key)
 make lint             # Check code style
 make format           # Auto-fix formatting
+make check            # Run non-mutating checks + tests
 make type             # Run type checking
 ```
 
@@ -157,7 +158,7 @@ Integration tests are marked with `integration` and require `DEX_API_KEY`.
 make test             # Run all tests (excludes integration by default)
 make test-unit        # Run unit tests only
 make test-integration # Run integration tests (requires DEX_API_KEY)
-make check            # Run format, lint, type check, and tests
+make check            # Run format check, lint, type check, and tests
 ```
 
 ### Test Structure

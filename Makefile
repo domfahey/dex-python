@@ -4,9 +4,15 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .SHELLFLAGS := -eu -o pipefail -c
+MAKEFLAGS += --no-builtin-rules --no-print-directory
+
+.SUFFIXES:
+.DELETE_ON_ERROR:
 
 # Variables
-UV := uv
+UV ?= uv
+ENV_FILE ?= .env
+PACKAGE_DIR := src/dex_python
 PYTHON := $(UV) run python
 PYTEST := $(UV) run pytest
 RUFF := $(UV) run ruff
@@ -18,11 +24,18 @@ GREEN := \033[32m
 YELLOW := \033[33m
 RESET := \033[0m
 
+define load_env
+set -a; \
+if [ -f "$(ENV_FILE)" ]; then source "$(ENV_FILE)"; fi; \
+set +a;
+endef
+
 # Declare all phony targets
-.PHONY: install doctor clean format lint type check \
+.PHONY: install doctor clean format format-check lint type check \
         test test-unit test-integration test-cov \
         sync sync-back-preview sync-back-notes sync-back-desc sync-back-title \
         analyze flag-duplicates review-duplicates resolve-duplicates \
+        _require-api-key \
         help
 
 # =============================================================================
@@ -39,7 +52,7 @@ doctor: ## Verify environment and dependencies
 	@$(UV) --version
 	@$(PYTHON) -c "import sys; print('python:', sys.version.split()[0])"
 	@$(PYTHON) -c "import importlib.util; req=['httpx','pydantic','pydantic_settings','jellyfish','networkx','rich','unidecode']; missing=[r for r in req if importlib.util.find_spec(r) is None]; print('missing deps:', ', '.join(missing) if missing else 'none')"
-	@$(PYTHON) -c "import os; print('DEX_API_KEY:', 'set' if os.getenv('DEX_API_KEY') else 'missing')"
+	@$(load_env) $(PYTHON) -c "import os; print('DEX_API_KEY:', 'set' if os.getenv('DEX_API_KEY') else 'missing')"
 
 clean: ## Remove build artifacts and caches
 	@rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov
@@ -56,13 +69,16 @@ format: ## Auto-fix code formatting
 	@$(RUFF) format . --quiet
 	@echo -e "$(GREEN)✓ Formatted$(RESET)"
 
+format-check: ## Check formatting without modifying files
+	@$(RUFF) format . --check
+
 lint: ## Check code style
 	@$(RUFF) check .
 
 type: ## Run type checking
-	@$(MYPY) src/ --strict
+	@$(MYPY) $(PACKAGE_DIR) --strict
 
-check: format lint type test ## Run all checks (format, lint, type, test)
+check: format-check lint type test ## Run all checks (format check, lint, type, test)
 	@echo -e "$(GREEN)✓ All checks passed$(RESET)"
 
 # =============================================================================
@@ -75,35 +91,35 @@ test: ## Run all tests (excludes integration)
 test-unit: ## Run unit tests only
 	@$(PYTEST) tests/unit -v
 
-test-integration: ## Run integration tests (requires DEX_API_KEY)
-	@set -a && source .env && set +a && $(PYTEST) tests/integration -m integration -v
+test-integration: _require-api-key ## Run integration tests (requires DEX_API_KEY)
+	@$(load_env) $(PYTEST) tests/integration -m integration -v
 
 test-cov: ## Run tests with coverage report
-	@$(PYTEST) --cov=src/dex_python --cov-report=html --cov-report=term
+	@$(PYTEST) --cov=$(PACKAGE_DIR) --cov-report=html --cov-report=term
 	@echo -e "$(GREEN)✓ Coverage report: htmlcov/index.html$(RESET)"
 
 # =============================================================================
 # SYNC OPERATIONS
 # =============================================================================
 
-sync: ## Sync contacts from Dex API to local database
-	@$(PYTHON) scripts/sync_with_integrity.py
+sync: _require-api-key ## Sync contacts from Dex API to local database
+	@$(load_env) $(PYTHON) scripts/sync_with_integrity.py
 
-sync-back-preview: ## Preview sync-back changes (MODE=notes|description|job_title)
-ifndef MODE
-	@echo -e "$(YELLOW)Usage: make sync-back-preview MODE=notes$(RESET)"
-else
-	@$(PYTHON) scripts/sync_enrichment_back.py --mode $(MODE) --dry-run
-endif
+sync-back-preview: _require-api-key ## Preview sync-back changes (MODE=notes|description|job_title)
+	@if [ -z "$(MODE)" ]; then \
+		echo -e "$(YELLOW)Usage: make sync-back-preview MODE=notes$(RESET)"; \
+		exit 1; \
+	fi
+	@$(load_env) $(PYTHON) scripts/sync_enrichment_back.py --mode "$(MODE)" --dry-run
 
-sync-back-notes: ## Push enrichments as timeline notes
-	@$(PYTHON) scripts/sync_enrichment_back.py --mode notes
+sync-back-notes: _require-api-key ## Push enrichments as timeline notes
+	@$(load_env) $(PYTHON) scripts/sync_enrichment_back.py --mode notes
 
-sync-back-desc: ## Push enrichments to description field
-	@$(PYTHON) scripts/sync_enrichment_back.py --mode description
+sync-back-desc: _require-api-key ## Push enrichments to description field
+	@$(load_env) $(PYTHON) scripts/sync_enrichment_back.py --mode description
 
-sync-back-title: ## Push enrichments to job_title field
-	@$(PYTHON) scripts/sync_enrichment_back.py --mode job_title
+sync-back-title: _require-api-key ## Push enrichments to job_title field
+	@$(load_env) $(PYTHON) scripts/sync_enrichment_back.py --mode job_title
 
 # =============================================================================
 # DEDUPLICATION
@@ -121,6 +137,12 @@ review-duplicates: ## Interactively review duplicate candidates
 resolve-duplicates: ## Merge confirmed duplicates (destructive)
 	@DEX_DATA_DIR=. $(PYTHON) scripts/resolve_duplicates.py
 
+_require-api-key:
+	@$(load_env) if [ -z "$$DEX_API_KEY" ]; then \
+		echo -e "$(YELLOW)DEX_API_KEY is missing. Set it in $(ENV_FILE) or export it in your shell.$(RESET)"; \
+		exit 1; \
+	fi
+
 # =============================================================================
 # HELP
 # =============================================================================
@@ -134,6 +156,7 @@ help: ## Show this help message
 	@echo "Examples:"
 	@echo "  make install              # Set up development environment"
 	@echo "  make check                # Run all quality checks"
+	@echo "  make format               # Auto-fix formatting"
 	@echo "  make sync                 # Sync contacts from Dex API"
 	@echo "  make analyze              # Analyze duplicates"
 	@echo "  make review-duplicates    # Review duplicates interactively"

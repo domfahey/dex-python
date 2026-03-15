@@ -6,6 +6,8 @@ from pathlib import Path
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from dex_python.db.models import Contact
+
 
 class TestGetEngine:
     """Test get_engine function."""
@@ -18,20 +20,21 @@ class TestGetEngine:
         assert isinstance(engine, Engine)
         assert "dex_contacts.db" in str(engine.url)
 
-    def test_creates_engine_with_custom_path(self):
+    def test_creates_engine_with_custom_path(self, tmp_path: Path):
         """Should create engine with custom db path."""
         from dex_python.db.session import get_engine
 
-        custom_path = Path("/tmp/custom.db")
+        custom_path = tmp_path / "custom.db"
         engine = get_engine(custom_path)
         assert isinstance(engine, Engine)
         assert "custom.db" in str(engine.url)
 
-    def test_creates_engine_with_string_path(self):
+    def test_creates_engine_with_string_path(self, tmp_path: Path):
         """Should accept string path as well as Path object."""
         from dex_python.db.session import get_engine
 
-        engine = get_engine("test.db")
+        test_db = tmp_path / "test.db"
+        engine = get_engine(str(test_db))
         assert isinstance(engine, Engine)
         assert "test.db" in str(engine.url)
 
@@ -104,19 +107,19 @@ class TestGetSession:
         session1.close()
         session2.close()
 
-    def test_accepts_string_path(self):
+    def test_accepts_string_path(self, tmp_path: Path):
         """Should accept string path."""
         from dex_python.db.session import get_session
 
-        session = get_session("test.db")
+        session = get_session(str(tmp_path / "test.db"))
         assert isinstance(session, Session)
         session.close()
 
-    def test_accepts_path_object(self):
+    def test_accepts_path_object(self, tmp_path: Path):
         """Should accept Path object."""
         from dex_python.db.session import get_session
 
-        session = get_session(Path("test.db"))
+        session = get_session(tmp_path / "test.db")
         assert isinstance(session, Session)
         session.close()
 
@@ -143,13 +146,12 @@ class TestSessionOperations:
     def test_can_create_tables_with_session(self):
         """Session should allow creating tables."""
         from dex_python.db.models import Base
-        from dex_python.db.session import get_engine, get_session
-
-        engine = get_engine(":memory:")
-        Base.metadata.create_all(engine)
+        from dex_python.db.session import get_session
 
         session = get_session(":memory:")
-        # If we got here without error, tables were created successfully
+        Base.metadata.create_all(session.bind)
+        result = session.query(Contact).all()
+        assert result == []
         session.close()
 
     def test_session_can_query_empty_table(self):
