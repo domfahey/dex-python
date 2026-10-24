@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
@@ -23,7 +24,9 @@ from dex_python.exceptions import (
     AuthenticationError,
     ContactNotFoundError,
     DexAPIError,
+    NoteNotFoundError,
     RateLimitError,
+    ReminderNotFoundError,
     ValidationError,
 )
 from tests.helpers import (
@@ -536,11 +539,51 @@ async def test_404_raises_contact_not_found(
     )
 
     async with client_context(client_kind, settings) as client:
-        with pytest.raises(ContactNotFoundError):
+        with pytest.raises(ContactNotFoundError) as exc_info:
             await maybe_await(client.get_contact("invalid-id"))
 
+    assert exc_info.value.contact_id == "invalid-id"
 
-async def test_404_for_contact_search_is_not_contact_not_found_error(
+
+async def test_404_raises_reminder_not_found(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/reminders/missing-reminder"),
+        status_code=404,
+        json={"error": "Reminder not found"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(ReminderNotFoundError) as exc_info:
+            await maybe_await(client.get_reminder("missing-reminder"))
+
+    assert exc_info.value.reminder_id == "missing-reminder"
+
+
+async def test_404_raises_note_not_found(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline/missing-note"),
+        status_code=404,
+        json={"error": "Note not found"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(NoteNotFoundError) as exc_info:
+            await maybe_await(client.get_timeline_note("missing-note"))
+
+    assert exc_info.value.note_id == "missing-note"
+
+
+def _assert_generic_404(error: BaseException) -> None:
+    """Collection 404s must be DexAPIError, not a not-found subclass."""
+    assert type(error) is DexAPIError
+    assert getattr(error, "status_code", None) == 404
+
+
+async def test_404_for_contact_search_is_generic_api_error(
     client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(
@@ -550,11 +593,13 @@ async def test_404_for_contact_search_is_not_contact_not_found_error(
     )
 
     async with client_context(client_kind, settings) as client:
-        with pytest.raises(DexAPIError):
+        with pytest.raises(DexAPIError) as exc_info:
             await maybe_await(client.search_contacts({"query": "missing"}))
 
+    _assert_generic_404(exc_info.value)
 
-async def test_404_for_timeline_count_is_not_note_not_found_error(
+
+async def test_404_for_timeline_count_is_generic_api_error(
     client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(
@@ -564,11 +609,13 @@ async def test_404_for_timeline_count_is_not_note_not_found_error(
     )
 
     async with client_context(client_kind, settings) as client:
-        with pytest.raises(DexAPIError):
+        with pytest.raises(DexAPIError) as exc_info:
             await maybe_await(client.count_timeline())
 
+    _assert_generic_404(exc_info.value)
 
-async def test_404_for_recurring_reminders_is_not_reminder_not_found_error(
+
+async def test_404_for_recurring_reminders_is_generic_api_error(
     client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(
@@ -578,8 +625,94 @@ async def test_404_for_recurring_reminders_is_not_reminder_not_found_error(
     )
 
     async with client_context(client_kind, settings) as client:
-        with pytest.raises(DexAPIError):
+        with pytest.raises(DexAPIError) as exc_info:
             await maybe_await(client.get_recurring_reminders())
+
+    _assert_generic_404(exc_info.value)
+
+
+async def test_404_for_contact_count_is_generic_api_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/contacts/count"),
+        status_code=404,
+        json={"error": "Count endpoint unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError) as exc_info:
+            await maybe_await(client.count_contacts())
+
+    _assert_generic_404(exc_info.value)
+
+
+async def test_404_for_timeline_note_types_is_generic_api_error(
+    client_kind: ClientKind, settings: Settings, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=build_url(settings, "/timeline/note-types"),
+        status_code=404,
+        json={"error": "Note types unavailable"},
+    )
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError) as exc_info:
+            await maybe_await(client.get_timeline_note_types())
+
+    _assert_generic_404(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "expected_type", "resource_id"),
+    [
+        ("/contacts/contact-1", ContactNotFoundError, "contact-1"),
+        ("/contacts/contact-1/", ContactNotFoundError, "contact-1"),
+        ("/contacts/contact-1?extra=1", ContactNotFoundError, "contact-1"),
+        ("/reminders/rem-1", ReminderNotFoundError, "rem-1"),
+        ("/reminders/rem-1/", ReminderNotFoundError, "rem-1"),
+        ("/timeline/note-1", NoteNotFoundError, "note-1"),
+        ("/timeline_items/note-2", NoteNotFoundError, "note-2"),
+        ("/timeline_items/note-2/", NoteNotFoundError, "note-2"),
+        ("/contacts/search", DexAPIError, None),
+        ("/contacts/search/", DexAPIError, None),
+        ("/contacts/search?query=missing", DexAPIError, None),
+        ("/contacts/count", DexAPIError, None),
+        ("/contacts/filter", DexAPIError, None),
+        ("/contacts/by-emails", DexAPIError, None),
+        ("/contacts/merge", DexAPIError, None),
+        ("/reminders/recurring", DexAPIError, None),
+        ("/timeline/count", DexAPIError, None),
+        ("/timeline/note-types", DexAPIError, None),
+        ("/contacts", DexAPIError, None),
+        ("/timeline_items/contacts/contact-1", DexAPIError, None),
+        ("/groups/group-1", DexAPIError, None),
+    ],
+)
+async def test_404_mapping_is_limited_to_single_resource_endpoints(
+    client_kind: ClientKind,
+    settings: Settings,
+    endpoint: str,
+    expected_type: type[DexAPIError],
+    resource_id: str | None,
+) -> None:
+    response = httpx.Response(404, json={"error": "missing"})
+
+    async with client_context(client_kind, settings) as client:
+        with pytest.raises(DexAPIError) as exc_info:
+            client._handle_error(response, endpoint)
+
+    error = exc_info.value
+    assert type(error) is expected_type
+    if resource_id is None:
+        assert str(error) == "Not found"
+        return
+    if isinstance(error, ContactNotFoundError):
+        assert error.contact_id == resource_id
+    elif isinstance(error, ReminderNotFoundError):
+        assert error.reminder_id == resource_id
+    elif isinstance(error, NoteNotFoundError):
+        assert error.note_id == resource_id
 
 
 @pytest.mark.parametrize(

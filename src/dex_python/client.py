@@ -15,7 +15,6 @@ Environment Variables:
     DEX_BASE_URL: Optional. Defaults to https://api.getdex.com/api/rest
 """
 
-import re
 import time
 from typing import Any, Self, cast
 
@@ -24,12 +23,10 @@ import httpx
 from .config import Settings
 from .exceptions import (
     AuthenticationError,
-    ContactNotFoundError,
     DexAPIError,
-    NoteNotFoundError,
     RateLimitError,
-    ReminderNotFoundError,
     ValidationError,
+    _exception_for_404,
 )
 from .models import (
     ContactCreate,
@@ -106,10 +103,12 @@ class DexClient:
             AuthenticationError: For 401 responses.
             RateLimitError: For 429 responses.
             ValidationError: For 400 responses.
-            ContactNotFoundError: For 404 on /contacts endpoints.
-            ReminderNotFoundError: For 404 on /reminders endpoints.
-            NoteNotFoundError: For 404 on /timeline_items endpoints.
-            DexAPIError: For all other error responses.
+            ContactNotFoundError: For 404 on `/contacts/{id}`.
+            ReminderNotFoundError: For 404 on `/reminders/{id}`.
+            NoteNotFoundError: For 404 on `/timeline/{id}` or
+                `/timeline_items/{id}`.
+            DexAPIError: For all other errors, including 404s from collection
+                routes such as `/contacts/search` and `/timeline/count`.
         """
         status_code = response.status_code
         try:
@@ -134,18 +133,7 @@ class DexClient:
                 response_data=data,
             )
         elif status_code == 404:
-            if re.fullmatch(r"/contacts/[^/]+/?", endpoint):
-                contact_id = endpoint.split("/contacts/")[-1].split("/")[0]
-                raise ContactNotFoundError(contact_id)
-            if re.fullmatch(r"/reminders/[^/]+/?", endpoint):
-                reminder_id = endpoint.split("/reminders/")[-1].split("/")[0]
-                raise ReminderNotFoundError(reminder_id)
-            if re.fullmatch(r"/timeline/[^/]+/?", endpoint) or re.fullmatch(
-                r"/timeline_items/[^/]+/?", endpoint
-            ):
-                note_id = endpoint.rstrip("/").split("/")[-1]
-                raise NoteNotFoundError(note_id)
-            raise DexAPIError("Not found", status_code=404, response_data=data)
+            raise _exception_for_404(endpoint, data)
         else:
             raise DexAPIError(
                 data.get("error", f"API error: {status_code}"),
