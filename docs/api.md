@@ -1,12 +1,17 @@
 # API Reference
 
-Python client for the [Dex CRM API](https://getdex.com/docs/api-reference/authentication).
+Python client for the [Dex CRM API](https://getdex.com/docs/api-reference).
 
-See official docs: [Contacts](https://getdex.com/docs/api-reference/contacts) |
-[Reminders](https://getdex.com/docs/api-reference/reminders) |
-[Notes](https://getdex.com/docs/api-reference/notes)
-
-Official site: https://getdex.com/
+See official docs:
+[Authentication](https://getdex.com/docs/api-reference/authentication) |
+[Contacts](https://getdex.com/docs/api-reference/reference/contacts/list-contacts) |
+[Custom Fields](https://getdex.com/docs/api-reference/reference/custom-fields/list-custom-fields) |
+[Groups](https://getdex.com/docs/api-reference/reference/groups/list-groups) |
+[Reminders](https://getdex.com/docs/api-reference/reference/reminders/list-reminders) |
+[Search](https://getdex.com/docs/api-reference/reference/search/search-contacts-global) |
+[Tags](https://getdex.com/docs/api-reference/reference/tags/list-tags) |
+[Timeline](https://getdex.com/docs/api-reference/reference/timeline/list-notes) |
+[Users](https://getdex.com/docs/api-reference/reference/users/get-current-user)
 
 ## DexClient
 
@@ -420,24 +425,109 @@ Pagination models include field constraints:
 
 ## Dex API Reference
 
-For complete Dex API documentation, see [dex_api_docs/](dex_api_docs/README.md).
+Official API docs: https://getdex.com/docs/api-reference
+
+Base URL: `https://api.prod.getdex.com/v1`
+
+Authentication: `Authorization: Bearer dex_your_api_key`
+
+> **Note:** This client currently uses the legacy base URL
+> (`https://api.getdex.com/api/rest`) and header (`x-hasura-dex-api-key`).
+> See `Settings` above for configuration.
 
 ### Endpoints Summary
 
+#### Contacts
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/contacts` | List contacts |
-| GET | `/contacts/{id}` | Get contact by ID |
-| GET | `/search/contacts?email=` | Get contact by email |
-| POST | `/contacts` | Create contact |
-| PUT | `/contacts/{id}` | Update contact |
-| DELETE | `/contacts/{id}` | Delete contact |
-| GET | `/reminders` | List reminders |
-| POST | `/reminders` | Create reminder |
-| PUT | `/reminders/{id}` | Update reminder |
-| DELETE | `/reminders/{id}` | Delete reminder |
-| GET | `/timeline_items` | List notes |
-| GET | `/timeline_items/contacts/{id}` | Notes by contact |
-| POST | `/timeline_items` | Create note |
-| PUT | `/timeline_items/{id}` | Update note |
-| DELETE | `/timeline_items/{id}` | Delete note |
+| GET | `/contacts/` | List contacts |
+| GET | `/contacts/{contactId}` | Get a contact |
+| POST | `/contacts/` | Create contacts |
+| PUT | `/contacts/{contactId}` | Update a contact |
+| PUT | `/contacts/` | Update multiple contacts |
+| DELETE | `/contacts/{contactId}` | Delete a contact |
+| DELETE | `/contacts/` | Delete multiple contacts |
+| GET | `/contacts/count` | Count contacts |
+| GET | `/contacts/search` | Search contacts |
+| POST | `/contacts/filter` | Filter contacts |
+| POST | `/contacts/by-emails` | Find contacts by email |
+| POST | `/contacts/merge` | Merge contacts |
+
+#### Custom Fields
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/custom-fields/` | List custom fields |
+| POST | `/custom-fields/` | Create a custom field |
+| PUT | `/custom-fields/{customFieldId}` | Update a custom field |
+| DELETE | `/custom-fields/{customFieldId}` | Delete a custom field |
+| PUT | `/custom-fields/reorder` | Reorder custom fields |
+| POST | `/custom-fields/batch-update-contacts` | Batch update custom field values |
+
+#### Groups
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/groups/` | List groups |
+| GET | `/groups/{groupId}` | Get a group |
+| POST | `/groups/` | Create a group |
+| PUT | `/groups/{groupId}` | Update a group |
+| DELETE | `/groups/{groupId}` | Delete a group |
+| GET | `/groups/count` | Count groups |
+| GET | `/groups/{groupId}/contacts` | List contacts in a group |
+| PUT | `/groups/{groupId}/contacts` | Add contacts to a group |
+| POST | `/groups/{groupId}/contacts` | Remove contacts from a group |
+| GET | `/groups/contact-counts` | Get contact counts per group |
+
+#### Reminders
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/reminders/` | List reminders |
+| GET | `/reminders/{reminderId}` | Get a reminder |
+| POST | `/reminders/` | Create a reminder |
+| PUT | `/reminders/{reminderId}` | Update a reminder |
+| DELETE | `/reminders/{reminderId}` | Delete a reminder |
+| GET | `/reminders/recurring` | List recurring reminders |
+
+#### Search
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/search/contacts` | Search contacts (global) |
+| GET | `/search/groups` | Search groups |
+| GET | `/search/timeline` | Search notes |
+| GET | `/search/reminders` | Search reminders |
+| GET | `/search/tags` | Search tags |
+| GET | `/search/views` | Search views |
+
+#### Tags
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/tags/` | List tags |
+| GET | `/tags/{tagId}` | Get a tag |
+| POST | `/tags/` | Create a tag |
+| PUT | `/tags/{tagId}` | Update a tag |
+| DELETE | `/tags/{tagId}` | Delete a tag |
+| GET | `/tags/count` | Count tags |
+| GET | `/tags/contact-counts` | Get contact counts per tag |
+
+#### Timeline (Notes)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/timeline/` | List notes |
+| GET | `/timeline/{noteId}` | Get a note |
+| POST | `/timeline/` | Create a note |
+| PUT | `/timeline/{noteId}` | Update a note |
+| DELETE | `/timeline/{noteId}` | Delete a note |
+| GET | `/timeline/count` | Count notes |
+| GET | `/timeline/note-types` | List note types |
+
+#### Users
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/users/me` | Get current user |

@@ -21,6 +21,7 @@ Example:
     ...     print(f"Rate limited, retry after {e.retry_after}s")
 """
 
+import re
 from typing import Any
 
 
@@ -118,6 +119,53 @@ class NoteNotFoundError(DexAPIError):
         """
         super().__init__(f"Note not found: {note_id}", status_code=404)
         self.note_id = note_id
+
+
+# Collection and action routes that share a `/{collection}/{segment}` shape
+# with real resource IDs. A 404 from these routes is not a missing record.
+_NON_RESOURCE_IDS = frozenset(
+    {
+        "by-emails",
+        "count",
+        "filter",
+        "merge",
+        "note-types",
+        "recurring",
+        "search",
+    }
+)
+
+_NotFoundError = ContactNotFoundError | ReminderNotFoundError | NoteNotFoundError
+
+_SINGLE_RESOURCE_404: tuple[tuple[re.Pattern[str], type[_NotFoundError]], ...] = (
+    (re.compile(r"/contacts/([^/]+)/?"), ContactNotFoundError),
+    (re.compile(r"/reminders/([^/]+)/?"), ReminderNotFoundError),
+    (re.compile(r"/timeline/([^/]+)/?"), NoteNotFoundError),
+    (re.compile(r"/timeline_items/([^/]+)/?"), NoteNotFoundError),
+)
+
+
+def _exception_for_404(
+    endpoint: str, response_data: dict[str, Any] | None = None
+) -> DexAPIError:
+    """Map a 404 to a not-found error only for single-resource routes.
+
+    ``/contacts/{id}``, ``/reminders/{id}``, ``/timeline/{id}``, and
+    ``/timeline_items/{id}`` raise the matching not-found error. Collection
+    and action routes such as ``/contacts/search`` and ``/timeline/count``
+    raise a generic DexAPIError instead of a not-found error whose ID is
+    the action name.
+    """
+    path = endpoint.split("?", 1)[0]
+    for pattern, error_type in _SINGLE_RESOURCE_404:
+        match = pattern.fullmatch(path)
+        if match is None:
+            continue
+        resource_id = match.group(1)
+        if resource_id in _NON_RESOURCE_IDS:
+            break
+        return error_type(resource_id)
+    return DexAPIError("Not found", status_code=404, response_data=response_data)
 
 
 class RateLimitError(DexAPIError):

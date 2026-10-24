@@ -11,6 +11,8 @@ from dex_python.models import (
     ContactEmailResponse,
     ContactPhoneResponse,
     ContactUpdate,
+    CustomField,
+    CustomFieldCategory,
     Note,
     NoteContact,
     NoteCreate,
@@ -90,6 +92,38 @@ class TestNestedResponseFields:
         assert phone.phone_number == "555-1234"
         assert phone.label is None
         assert phone.contact_id is None
+
+
+class TestCustomFieldModels:
+    """Test parsing and typing for custom field models."""
+
+    def test_custom_field_parses_categories(self) -> None:
+        """CustomField should parse categories into CustomFieldCategory models."""
+        field = CustomField(
+            id="cf-1",
+            name="Industry",
+            field_type="select",
+            categories=[{"category": "Contacts"}],
+            ranking=2,
+            created_at="2025-01-01T00:00:00.000Z",
+            updated_at="2025-01-01T00:00:00.000Z",
+        )
+        assert field.id == "cf-1"
+        assert len(field.categories) == 1
+        assert isinstance(field.categories[0], CustomFieldCategory)
+        assert field.categories[0].category == "Contacts"
+
+    def test_custom_field_defaults_categories_to_empty_list(self) -> None:
+        """CustomField should default categories to an empty list."""
+        field = CustomField(
+            id="cf-2",
+            name="Priority",
+            field_type="number",
+            ranking=5,
+            created_at="2025-01-01T00:00:00.000Z",
+            updated_at="2025-01-01T00:00:00.000Z",
+        )
+        assert field.categories == []
 
 
 # =============================================================================
