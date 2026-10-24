@@ -9,7 +9,6 @@ import pytest
 from pydantic import ValidationError
 
 from dex_python.models import (
-    Contact,
     ContactCreate,
     ContactUpdate,
     NoteCreate,
@@ -99,10 +98,9 @@ class TestDueDateValidation:
             ReminderCreate(text="Test", due_at_date="January 15, 2025")
 
     def test_invalid_date_impossible_day(self) -> None:
-        """Impossible day (Feb 30) still passes regex but is allowed."""
-        # The validator only checks format, not validity
-        reminder = ReminderCreate(text="Test", due_at_date="2025-02-30")
-        assert reminder.due_at_date == "2025-02-30"
+        """Impossible calendar dates are rejected."""
+        with pytest.raises(ValidationError):
+            ReminderCreate(text="Test", due_at_date="2025-02-30")
 
     def test_none_due_date_valid(self) -> None:
         """None due_at_date should be valid."""
@@ -184,7 +182,7 @@ class TestPaginationBoundaries:
     def test_reminders_pagination_has_more(self) -> None:
         """PaginatedReminders has_more should work correctly."""
         page = PaginatedReminders(
-            reminders=[{"id": "1"}],
+            reminders=[{"id": "1", "body": "Call"}],
             total=100,
             limit=10,
             offset=90,
@@ -195,7 +193,7 @@ class TestPaginationBoundaries:
     def test_notes_pagination_has_more(self) -> None:
         """PaginatedNotes has_more should work correctly."""
         page = PaginatedNotes(
-            notes=[{"id": "1"}],
+            notes=[{"id": "1", "note": "Hello"}],
             total=1,
             limit=10,
             offset=0,
@@ -313,27 +311,27 @@ class TestExtractorFunctions:
 
     def test_extract_reminder_entity(self) -> None:
         """extract_reminder_entity should work for all operations."""
-        assert extract_reminder_entity(
-            {"insert_reminders_one": {"id": "1"}}
-        ) == {"id": "1"}
-        assert extract_reminder_entity(
-            {"update_reminders_by_pk": {"id": "2"}}
-        ) == {"id": "2"}
-        assert extract_reminder_entity(
-            {"delete_reminders_by_pk": {"id": "3"}}
-        ) == {"id": "3"}
+        assert extract_reminder_entity({"insert_reminders_one": {"id": "1"}}) == {
+            "id": "1"
+        }
+        assert extract_reminder_entity({"update_reminders_by_pk": {"id": "2"}}) == {
+            "id": "2"
+        }
+        assert extract_reminder_entity({"delete_reminders_by_pk": {"id": "3"}}) == {
+            "id": "3"
+        }
 
     def test_extract_note_entity(self) -> None:
         """extract_note_entity should work for all operations."""
-        assert extract_note_entity(
-            {"insert_timeline_items_one": {"id": "1"}}
-        ) == {"id": "1"}
-        assert extract_note_entity(
-            {"update_timeline_items_by_pk": {"id": "2"}}
-        ) == {"id": "2"}
-        assert extract_note_entity(
-            {"delete_timeline_items_by_pk": {"id": "3"}}
-        ) == {"id": "3"}
+        assert extract_note_entity({"insert_timeline_items_one": {"id": "1"}}) == {
+            "id": "1"
+        }
+        assert extract_note_entity({"update_timeline_items_by_pk": {"id": "2"}}) == {
+            "id": "2"
+        }
+        assert extract_note_entity({"delete_timeline_items_by_pk": {"id": "3"}}) == {
+            "id": "3"
+        }
 
 
 class TestUpdateModelsChangesDict:

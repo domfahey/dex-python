@@ -137,9 +137,7 @@ class TestAsyncClientContacts:
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/search/contacts?email=jane%40example.com",
             json={
-                "search_contacts_by_exact_email": [
-                    {"id": "456", "first_name": "Jane"}
-                ]
+                "search_contacts_by_exact_email": [{"id": "456", "first_name": "Jane"}]
             },
         )
 
@@ -201,11 +199,13 @@ class TestAsyncClientContacts:
             contact = ContactCreate.with_email(
                 "bob@example.com", first_name="Bob", last_name="Builder"
             )
-            result = await client.create_contact(contact)
+            await client.create_contact(contact)
 
         request = httpx_mock.get_requests()[0]
         body = json.loads(request.content)
-        assert body["contact"]["contact_emails"] == {"data": {"email": "bob@example.com"}}
+        assert body["contact"]["contact_emails"] == {
+            "data": {"email": "bob@example.com"}
+        }
 
     async def test_update_contact(
         self, settings: Settings, httpx_mock: HTTPXMock
@@ -214,7 +214,12 @@ class TestAsyncClientContacts:
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/contacts/contact-123",
             method="PUT",
-            json={"update_contacts_by_pk": {"id": "contact-123", "first_name": "Updated"}},
+            json={
+                "update_contacts_by_pk": {
+                    "id": "contact-123",
+                    "first_name": "Updated",
+                }
+            },
         )
 
         async with AsyncDexClient(settings) as client:
@@ -275,7 +280,7 @@ class TestAsyncClientReminders:
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/reminders?limit=10&offset=0",
             json={
-                "reminders": [{"id": "rem-1"}],
+                "reminders": [{"id": "rem-1", "body": "Call"}],
                 "total": {"aggregate": {"count": 50}},
             },
         )
@@ -318,7 +323,7 @@ class TestAsyncClientReminders:
                 contact_ids=["c1", "c2"],
                 due_at_date="2025-01-20",
             )
-            result = await client.create_reminder(reminder)
+            await client.create_reminder(reminder)
 
         request = httpx_mock.get_requests()[0]
         body = json.loads(request.content)
@@ -352,7 +357,7 @@ class TestAsyncClientReminders:
 
         async with AsyncDexClient(settings) as client:
             update = ReminderUpdate.mark_complete("rem-456")
-            result = await client.update_reminder(update)
+            await client.update_reminder(update)
 
         request = httpx_mock.get_requests()[0]
         body = json.loads(request.content)
@@ -377,9 +382,7 @@ class TestAsyncClientReminders:
 class TestAsyncClientNotes:
     """Test AsyncDexClient note operations."""
 
-    async def test_get_notes(
-        self, settings: Settings, httpx_mock: HTTPXMock
-    ) -> None:
+    async def test_get_notes(self, settings: Settings, httpx_mock: HTTPXMock) -> None:
         """Test fetching notes list."""
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/timeline_items?limit=100&offset=0",
@@ -404,7 +407,7 @@ class TestAsyncClientNotes:
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/timeline_items?limit=10&offset=0",
             json={
-                "timeline_items": [{"id": "note-1"}],
+                "timeline_items": [{"id": "note-1", "note": "Hello"}],
                 "pagination": {"total": {"count": 25}},
             },
         )
@@ -434,9 +437,7 @@ class TestAsyncClientNotes:
 
         assert len(notes) == 2
 
-    async def test_create_note(
-        self, settings: Settings, httpx_mock: HTTPXMock
-    ) -> None:
+    async def test_create_note(self, settings: Settings, httpx_mock: HTTPXMock) -> None:
         """Test creating a new note."""
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/timeline_items",
@@ -465,15 +466,13 @@ class TestAsyncClientNotes:
                 note="Conference discussion",
                 contact_ids=["c1", "c2", "c3"],
             )
-            result = await client.create_note(note)
+            await client.create_note(note)
 
         request = httpx_mock.get_requests()[0]
         body = json.loads(request.content)
         assert len(body["timeline_event"]["timeline_items_contacts"]["data"]) == 3
 
-    async def test_update_note(
-        self, settings: Settings, httpx_mock: HTTPXMock
-    ) -> None:
+    async def test_update_note(self, settings: Settings, httpx_mock: HTTPXMock) -> None:
         """Test updating an existing note."""
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/timeline_items/note-123",
@@ -487,9 +486,7 @@ class TestAsyncClientNotes:
 
         assert result["id"] == "note-123"
 
-    async def test_delete_note(
-        self, settings: Settings, httpx_mock: HTTPXMock
-    ) -> None:
+    async def test_delete_note(self, settings: Settings, httpx_mock: HTTPXMock) -> None:
         """Test deleting a note."""
         httpx_mock.add_response(
             url="https://api.getdex.com/api/rest/timeline_items/note-del",
@@ -816,7 +813,9 @@ class TestAsyncClientRetry:
                 json={"contacts": []},
             )
 
-            async with AsyncDexClient(settings, max_retries=1, retry_delay=0.01) as client:
+            async with AsyncDexClient(
+                settings, max_retries=1, retry_delay=0.01
+            ) as client:
                 await client.get_contacts()
 
             assert len(delays) == 1, f"Expected retry for status code {code}"

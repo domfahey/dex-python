@@ -94,9 +94,7 @@ class TestMergeClusterEdgeCases:
         with pytest.raises(ValueError, match="Primary ID .* not found"):
             merge_cluster(test_db, ["c1", "c2"], primary_id="c3")
 
-    def test_single_contact_returns_same_id(
-        self, test_db: sqlite3.Connection
-    ) -> None:
+    def test_single_contact_returns_same_id(self, test_db: sqlite3.Connection) -> None:
         """merge_cluster with single contact should return that contact's ID."""
         cursor = test_db.cursor()
         cursor.execute(
@@ -120,8 +118,12 @@ class TestMergeClusterEdgeCases:
         )
         # More complete contact
         cursor.execute(
-            """INSERT INTO contacts (id, first_name, last_name, job_title, linkedin, website)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+            """
+            INSERT INTO contacts (
+                id, first_name, last_name, job_title, linkedin, website
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
             ("complete", "John", "Doe", "Engineer", "johndoe", "example.com"),
         )
         test_db.commit()
@@ -153,7 +155,8 @@ class TestMergeClusterEdgeCases:
         merge_cluster(test_db, ["c1", "c2"], primary_id="c1")
 
         cursor.execute(
-            "SELECT first_name, last_name, job_title, linkedin FROM contacts WHERE id = ?",
+            "SELECT first_name, last_name, job_title, linkedin "
+            "FROM contacts WHERE id = ?",
             ("c1",),
         )
         row = cursor.fetchone()
@@ -261,7 +264,8 @@ class TestMergeClusterEdgeCases:
         merge_cluster(test_db, ["c1", "c2"], primary_id="c1")
 
         cursor.execute(
-            "SELECT phone_number FROM phones WHERE contact_id = ? ORDER BY phone_number",
+            "SELECT phone_number FROM phones "
+            "WHERE contact_id = ? ORDER BY phone_number",
             ("c1",),
         )
         phones = [row[0] for row in cursor.fetchall()]
@@ -322,11 +326,13 @@ class TestMergeClusterEdgeCases:
         """Merge should correctly handle NULL vs empty string fields."""
         cursor = test_db.cursor()
         cursor.execute(
-            "INSERT INTO contacts (id, first_name, last_name, job_title) VALUES (?, ?, ?, ?)",
+            "INSERT INTO contacts (id, first_name, last_name, job_title) "
+            "VALUES (?, ?, ?, ?)",
             ("c1", "John", None, ""),
         )
         cursor.execute(
-            "INSERT INTO contacts (id, first_name, last_name, job_title) VALUES (?, ?, ?, ?)",
+            "INSERT INTO contacts (id, first_name, last_name, job_title) "
+            "VALUES (?, ?, ?, ?)",
             ("c2", None, "Doe", "Engineer"),
         )
         test_db.commit()
@@ -369,7 +375,8 @@ class TestMergeClusterEdgeCases:
         cursor = test_db.cursor()
         full_data_2 = json.dumps({"birthday": "1990-05-15"})
         cursor.execute(
-            "INSERT INTO contacts (id, first_name, full_data, job_title) VALUES (?, ?, ?, ?)",
+            "INSERT INTO contacts (id, first_name, full_data, job_title) "
+            "VALUES (?, ?, ?, ?)",
             ("c1", "John", None, "CEO"),
         )
         cursor.execute(

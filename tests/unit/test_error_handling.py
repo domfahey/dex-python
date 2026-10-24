@@ -18,6 +18,7 @@ from dex_python.exceptions import (
     ValidationError,
 )
 
+
 class TestSyncClientErrorHandling:
     """Test DexClient._handle_error() method."""
 

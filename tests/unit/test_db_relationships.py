@@ -5,7 +5,6 @@ Tests cascade behaviors, foreign key constraints, and model relationships.
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from dex_python.db.models import (
@@ -41,7 +40,7 @@ class TestContactRelationships:
     def test_contact_has_emails_relationship(self, session: Session) -> None:
         """Contact should have emails relationship."""
         contact = Contact(id="c1", first_name="John", last_name="Doe")
-        email = Email(email="john@example.com", contact=contact)
+        Email(email="john@example.com", contact=contact)
         session.add(contact)
         session.commit()
 
@@ -52,7 +51,7 @@ class TestContactRelationships:
     def test_contact_has_phones_relationship(self, session: Session) -> None:
         """Contact should have phones relationship."""
         contact = Contact(id="c1", first_name="John")
-        phone = Phone(phone_number="555-1234", label="Work", contact=contact)
+        Phone(phone_number="555-1234", label="Work", contact=contact)
         session.add(contact)
         session.commit()
 
@@ -164,7 +163,7 @@ class TestEmailModel:
     def test_email_with_contact(self, session: Session) -> None:
         """Email should reference its contact."""
         contact = Contact(id="c1", first_name="John")
-        email = Email(email="john@example.com", contact=contact)
+        Email(email="john@example.com", contact=contact)
         session.add(contact)
         session.commit()
 
@@ -188,7 +187,7 @@ class TestPhoneModel:
     def test_phone_with_label(self, session: Session) -> None:
         """Phone should store label."""
         contact = Contact(id="c1", first_name="John")
-        phone = Phone(phone_number="555-1234", label="Mobile", contact=contact)
+        Phone(phone_number="555-1234", label="Mobile", contact=contact)
         session.add(contact)
         session.commit()
 
@@ -198,7 +197,7 @@ class TestPhoneModel:
     def test_phone_without_label(self, session: Session) -> None:
         """Phone can exist without label."""
         contact = Contact(id="c1", first_name="John")
-        phone = Phone(phone_number="555-1234", contact=contact)
+        Phone(phone_number="555-1234", contact=contact)
         session.add(contact)
         session.commit()
 

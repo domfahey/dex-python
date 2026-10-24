@@ -6,7 +6,6 @@ Tests CLI commands with actual database operations where applicable.
 import sqlite3
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from typer.testing import CliRunner
@@ -85,9 +84,7 @@ def temp_db() -> Path:
 class TestDuplicateAnalyzeCommand:
     """Tests for duplicate analyze command."""
 
-    def test_analyze_with_existing_db(
-        self, runner: CliRunner, temp_db: Path
-    ) -> None:
+    def test_analyze_with_existing_db(self, runner: CliRunner, temp_db: Path) -> None:
         """analyze should work with existing database."""
         result = runner.invoke(app, ["duplicate", "analyze", "--db-path", str(temp_db)])
         assert result.exit_code == 0
@@ -101,16 +98,21 @@ class TestDuplicateAnalyzeCommand:
         assert result.exit_code == 1
         assert "Database not found" in result.output
 
-    def test_analyze_with_output_option(
-        self, runner: CliRunner, temp_db: Path
-    ) -> None:
+    def test_analyze_with_output_option(self, runner: CliRunner, temp_db: Path) -> None:
         """analyze should accept --output option."""
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             output_path = f.name
 
         result = runner.invoke(
             app,
-            ["duplicate", "analyze", "--db-path", str(temp_db), "--output", output_path],
+            [
+                "duplicate",
+                "analyze",
+                "--db-path",
+                str(temp_db),
+                "--output",
+                output_path,
+            ],
         )
         assert result.exit_code == 0
 
@@ -176,15 +178,17 @@ class TestDuplicateResolveCommand:
             app, ["duplicate", "resolve", "--db-path", str(temp_db), "--force"]
         )
         assert result.exit_code == 0
-        assert "Resolving" in result.stdout or "complete" in result.stdout.lower()
+        assert "Resolution complete." in result.output
 
-    def test_resolve_without_force_abort(self, runner: CliRunner, temp_db: Path) -> None:
+    def test_resolve_without_force_abort(
+        self, runner: CliRunner, temp_db: Path
+    ) -> None:
         """resolve without --force should prompt and allow abort."""
         result = runner.invoke(
             app, ["duplicate", "resolve", "--db-path", str(temp_db)], input="n\n"
         )
-        # User declined, should abort
-        assert "Aborted" in result.stdout or result.exit_code == 1
+        assert result.exit_code == 1
+        assert "Aborted." in result.output
 
     def test_resolve_without_force_confirm(
         self, runner: CliRunner, temp_db: Path
@@ -193,12 +197,20 @@ class TestDuplicateResolveCommand:
         result = runner.invoke(
             app, ["duplicate", "resolve", "--db-path", str(temp_db)], input="y\n"
         )
-        assert result.exit_code == 0 or "complete" in result.stdout.lower()
+        assert result.exit_code == 0
+        assert "Resolution complete." in result.output
 
     def test_resolve_with_nonexistent_db(self, runner: CliRunner) -> None:
         """resolve should error for nonexistent database."""
         result = runner.invoke(
-            app, ["duplicate", "resolve", "--db-path", "/nonexistent/path.db", "--force"]
+            app,
+            [
+                "duplicate",
+                "resolve",
+                "--db-path",
+                "/nonexistent/path.db",
+                "--force",
+            ],
         )
         assert result.exit_code == 1
         assert "Database not found" in result.output
@@ -337,25 +349,13 @@ class TestCLIDataDir:
     def test_data_dir_option_works(self, runner: CliRunner) -> None:
         """--data-dir option should be accepted."""
         with tempfile.TemporaryDirectory() as tmp_dir:
-            # Create a db file in the data dir
-            db_path = Path(tmp_dir) / "dex.db"
-            conn = sqlite3.connect(str(db_path))
-            cursor = conn.cursor()
-            cursor.execute(
-                "CREATE TABLE contacts (id TEXT PRIMARY KEY, first_name TEXT)"
-            )
-            conn.commit()
-            conn.close()
+            db_path = Path(tmp_dir) / "dex_contacts.db"
+            sqlite3.connect(str(db_path)).close()
 
-            result = runner.invoke(
-                app, ["duplicate", "analyze", "--data-dir", tmp_dir]
-            )
-            # May fail to find db if resolve_db_path doesn't use dex.db by default
-            # But should not error on the option itself
-            assert "--data-dir" not in result.stdout.lower() or result.exit_code in [
-                0,
-                1,
-            ]
+            result = runner.invoke(app, ["duplicate", "analyze", "--data-dir", tmp_dir])
+            assert result.exit_code == 0
+            assert f"Analyzing duplicates in: {db_path}" in result.output
+            assert "Analysis complete." in result.output
 
 
 class TestCLIHelpMessages:

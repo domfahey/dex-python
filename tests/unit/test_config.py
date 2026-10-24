@@ -1,8 +1,5 @@
 """Tests for Settings configuration."""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 from pydantic import ValidationError
 
@@ -47,14 +44,14 @@ class TestSettingsValidation:
         monkeypatch.setenv("DEX_API_KEY", "")
 
         settings = Settings()
-        assert settings.dex_api_key == ""
+        assert settings.dex_api_key.get_secret_value() == ""
 
     def test_whitespace_api_key_preserved(self, monkeypatch) -> None:
         """Whitespace in API key should be preserved."""
         monkeypatch.setenv("DEX_API_KEY", "  key-with-spaces  ")
 
         settings = Settings()
-        assert settings.dex_api_key == "  key-with-spaces  "
+        assert settings.dex_api_key.get_secret_value() == "  key-with-spaces  "
 
     def test_special_characters_in_api_key(self, monkeypatch) -> None:
         """API key with special characters should work."""
@@ -62,21 +59,21 @@ class TestSettingsValidation:
         monkeypatch.setenv("DEX_API_KEY", api_key)
 
         settings = Settings()
-        assert settings.dex_api_key == api_key
+        assert settings.dex_api_key.get_secret_value() == api_key
 
     def test_direct_initialization(self, monkeypatch) -> None:
         """Settings can be initialized with direct values."""
         monkeypatch.delenv("DEX_API_KEY", raising=False)
 
         settings = Settings(dex_api_key="direct-key")
-        assert settings.dex_api_key == "direct-key"
+        assert settings.dex_api_key.get_secret_value() == "direct-key"
 
     def test_direct_overrides_env(self, monkeypatch) -> None:
         """Direct initialization should override environment variables."""
         monkeypatch.setenv("DEX_API_KEY", "env-key")
 
         settings = Settings(dex_api_key="direct-key")
-        assert settings.dex_api_key == "direct-key"
+        assert settings.dex_api_key.get_secret_value() == "direct-key"
 
     def test_custom_base_url(self, monkeypatch) -> None:
         """Custom base URL should be accepted."""
@@ -120,7 +117,7 @@ class TestSettingsFromDotEnv:
         monkeypatch.chdir(tmp_path)
 
         settings = Settings()
-        assert settings.dex_api_key == "dotenv-key"
+        assert settings.dex_api_key.get_secret_value() == "dotenv-key"
         assert settings.dex_base_url == "https://dotenv.com"
 
     def test_env_vars_override_dotenv(self, monkeypatch, tmp_path) -> None:
@@ -135,7 +132,7 @@ class TestSettingsFromDotEnv:
         monkeypatch.chdir(tmp_path)
 
         settings = Settings()
-        assert settings.dex_api_key == "env-key"
+        assert settings.dex_api_key.get_secret_value() == "env-key"
 
     def test_handles_missing_dotenv_gracefully(self, monkeypatch, tmp_path) -> None:
         """Settings should work when .env file doesn't exist."""
@@ -143,7 +140,7 @@ class TestSettingsFromDotEnv:
         monkeypatch.chdir(tmp_path)  # Directory without .env
 
         settings = Settings()
-        assert settings.dex_api_key == "test-key"
+        assert settings.dex_api_key.get_secret_value() == "test-key"
 
 
 class TestSettingsImmutability:
@@ -167,4 +164,4 @@ class TestSettingsImmutability:
 
         assert "dex_api_key" in data
         assert "dex_base_url" in data
-        assert data["dex_api_key"] == "test-key"
+        assert data["dex_api_key"].get_secret_value() == "test-key"
